@@ -1,0 +1,73 @@
+# =========================
+# Python & Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# =========================
+# Virtual Environments
+# =========================
+env/
+venv/
+venv*/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# =========================
+# Django & Database
+# =========================
+*.sqlite3
+*.db
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.local
+*.swp
+*.swo
+
+# =========================
+# Static files & Media uploads
+# =========================
+staticfiles/*
+!staticfiles/.gitkeep
+media/port_xls*.xlsx
+media/*.xlsx
+media/*.xls
+!media/.gitkeep
+
+# =========================
+# Generated Data & Excel Output
+# =========================
+*.csv
+similar.xlsx
+kmeandata.xlsx
+data_monitor*.xlsx
+qtr_result.xlsx
+~$*.xlsx
+~$*.xls
+
+# Keep portfolio template files
+!Portfolio Template.xlsx
+!Portfolio Template*.xlsx
+
+# =========================
+# IDEs & OS Files
+# =========================
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+*.bak
+*.log
