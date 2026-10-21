@@ -1,477 +1,184 @@
 {% extends "layouts/base.html" %}
 
-{% block title %} Dashboard{% endblock %}
-
-<!-- Specific Page CSS goes HERE  -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block title %}Coffee Can Portfolio{% endblock %}
 
 {% block content %}
-
-    <div class="row">
-
-      <div class="col-12">
-        <div class="card card-chart">
-          <div class="card-header ">
-            <div class="row">
-              <div class="col-sm-12 text-left">
-                <div class="form-group col-md-12 mb-0">
-                  <h2 style="text-align:left; color:yellow;"><b>Cookie Can Portfolio</b></h2>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div class="container">
-              <form method="POST" enctype="multipart/form-data">
-                {% load static%}
-                {% load crispy_forms_tags %}
-                {% csrf_token %}
-
-                <div class="form-row">
-                  <div class="form-group col-md-9e mb-0">
-                    <!-- <img class= "avatar2" src="/static/assets/img/excel_upload.png" alt="Upload"> -->
-                    {{ bsp_sel_form.ccan_port_file|as_crispy_field }}
-                    <!-- {{ bsp_sel_form.ccan_port_file}} -->
-                  </div>
-                  <div class="form-group col-md-1 mb-0">
-                    <!--<img src="{{MEDIA_URL}}/excel.png"> -->
-
-                    <img class="avatar2" style="float: right; top:15px;" src="/static/assets/img/excel.png" alt="...">
-
-                  </div>
-                  <div class="form-group col-md-2 mb-0">
-                  <!--  <button type="submit" class="btn btn-primary" style="float: right; top:15px;">Upload</button>
-                    <a href="{%static 'media'%}/Portfolio Template.xlsx" download >Download Template</a> -->
-                    <a href="/static/assets/Portfolio Template.xlsx" download >Download <br> Template</a>
-                  </div>
-                </div>
-
-                <div class="form-row">
-                  <div class="form-group col-md-4 mb-0">
-                    {{ bsp_sel_form.benchmark|as_crispy_field }}
-                  </div>
-                  <div class="form-group col-md-2 mb-0">
-                    {{ bsp_sel_form.sdate|as_crispy_field }}
-                  </div>
-                  <div class="form-group col-md-2 mb-0">
-                    {{ bsp_sel_form.edate|as_crispy_field }}
-                  </div>
-                  <div class="form-group col-md-2 mb-0">
-                    {{ bsp_sel_form.yaxis_type|as_crispy_field }}
-                  </div>
-                  <div class="form-group col-md-2 mb-0">
-                    <button type="submit" class="btn btn-primary" style="float: right; top:15px;">Submit</button>
-                  </div>
-                </div>
-
-              </form>
-            </div>
-          </div>
-
-          <div class="form-group col-md-12 mb-0">
-            <h4 style="text-align:center; color:yellow;"><b> {{msg}} </b></h4>
-            <h6 style="text-align:center; color:yellow;"> {{msg2}}  </h6>
-            <h6 style="text-align:center; color:yellow;"> {{msg_list}} </h6>
-          </div>
-          <div class="col-lg-12">
-            <div class="card card-chart">
-              <div class="card-header">
-            {% autoescape off %}
-            {{ plot_div_reset}}
-            {% endautoescape %}
-              </div>
-              </div>
-          </div>
-          <div class="col-lg-12">
-            <div class="card card-chart">
-              <div class="card-header">
-            {% autoescape off %}
-            {{ tbl_div_reset_beta}}
-            {% endautoescape %}
-              </div>
-              </div>
-          </div>
-
+<!-- Page Header -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="d-flex flex-column flex-md-row md:align-items-center justify-content-between pb-3" style="border-bottom: 1px solid rgba(30, 41, 59, 0.6); gap: 1rem;">
+      <div>
+        <div class="d-inline-flex align-items-center mb-2" style="gap: 0.5rem; padding: 0.25rem 0.625rem; border-radius: 9999px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #FBBF24; font-size: 0.6875rem; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+          <span>LONG-TERM WEALTH COMPOUNDING STRATEGY</span>
         </div>
-      </div>
-
-    </div>
-    <div class="row">
-      <div class="col-lg-12">
-        <div class="card card-chart">
-          <div class="card-header">
-            <div class="form-group col-md-12 mb-0">
-              <h4 style="text-align:left; color:yellow;"><b>Normalized Movement</b></h4>
-            </div>
-          </div>
-          {% autoescape off %}
-          {{ plot_div_norm}}
-          {% endautoescape %}
-          <!--
-          <div class="card-body">
-            <div class="chart-area">
-              <canvas id="chartLinePurple"></canvas>
-            </div>
-          </div>
-          -->
-        </div>
-      </div>
-      <div class="col-lg-12">
-        <div class="card card-chart">
-          <div class="card-header">
-            <div class="form-group col-md-12 mb-0">
-              <h4 style="text-align:left; color:yellow;"><b>Portfolio Insights</b></h4>
-            </div>
-          </div>
-          {% autoescape off %}
-          {{ plot_div_stock}}
-          {% endautoescape %}
-          <!--
-          <div class="card-body">
-            <div class="chart-area">
-              <canvas id="CountryChart"></canvas>
-            </div>
-          </div>
-          -->
-        </div>
-      </div>
-      <div class="col-lg-12">
-        <div class="card card-chart">
-          <div class="card-header">
-            <div class="form-group col-md-12 mb-0">
-              <h4 style="text-align:left; color:yellow;"><b>Principal Component Analysis</b></h4>
-            </div>
-          </div>
-          {% autoescape off %}
-          {{ plot_div_scat}}
-          {% endautoescape %}
-          <!--
-          <div class="card-body">
-            <div class="chart-area">
-              <canvas id="CountryChart"></canvas>
-            </div>
-          </div>
-          -->
-        </div>
-      </div>
-      <div class="col-lg-12">
-        <div class="card card-chart">
-          <div class="card-header">
-            <div class="form-group col-md-12 mb-0">
-              <h4 style="text-align:left; color:yellow;"><b>Portfolio cross correlation</b></h4>
-            </div>
-          </div>
-          {% autoescape off %}
-          {{ plot_div_ben}}
-          {% endautoescape %}
-          <!--
-          <div class="card-body">
-            <div class="chart-area">
-              <canvas id="chartLineGreen"></canvas>
-            </div>
-          </div>
-          -->
-        </div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: #F8FAFC; margin-bottom: 0.35rem; letter-spacing: -0.02em;">
+          Coffee Can Portfolio Engine
+        </h1>
+        <p style="font-size: 0.8125rem; color: #94A3B8; margin-bottom: 0; max-width: 800px;">
+          Backtest buy-and-forget, low-churn compounding baskets with high ROCE across historical market cycles against broader equity benchmarks.
       </div>
     </div>
-<!--
-    <div class="row">
-      <div class="col-lg-6 col-md-12">
-        <div class="card card-tasks">
-          <div class="card-header ">
-            <h6 class="title d-inline">Tasks(5)</h6>
-            <p class="card-category d-inline">today</p>
-            <div class="dropdown">
-              <button type="button" class="btn btn-link dropdown-toggle btn-icon" data-toggle="dropdown">
-                <i class="tim-icons icon-settings-gear-63"></i>
+  </div>
+</div>
+
+<!-- Portfolio Parameters & File Upload Card -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex flex-wrap align-items-center justify-content-between" style="gap: 1rem;">
+        <div>
+          <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0.25rem;">
+            Basket Allocation & Backtest Parameters
+          </h4>
+          <span style="font-size: 0.75rem; color: #64748B;">
+            Upload your custom portfolio allocation Excel file or use the standard basket.
+          </span>
+        </div>
+
+        <a href="/static/assets/Portfolio Template.xlsx" download class="d-inline-flex align-items-center" style="gap: 0.5rem; padding: 0.4rem 0.875rem; border-radius: 0.5rem; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(51, 65, 85, 0.8); color: #38A9F6; font-size: 0.75rem; font-weight: 600; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='rgba(51, 65, 85, 0.8)'; this.style.color='#FFFFFF'" onmouseout="this.style.background='rgba(30, 41, 59, 0.7)'; this.style.color='#38A9F6'">
+          <i class="fas fa-file-excel" style="color: #10B981;"></i>
+          <span>Download Excel Template</span>
+        </a>
+      </div>
+
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+          {% load static %}
+          {% load crispy_forms_tags %}
+          {% csrf_token %}
+
+          <div class="form-row">
+            <div class="form-group col-12 mb-3">
+              <label style="color: #94A3B8; font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Portfolio Excel File (.xlsx)</label>
+              {{ bsp_sel_form.ccan_port_file|as_crispy_field }}
+            </div>
+          </div>
+
+          <div class="form-row align-items-end">
+            <div class="form-group col-md-4 mb-3">
+              {{ bsp_sel_form.benchmark|as_crispy_field }}
+            </div>
+            <div class="form-group col-md-2 mb-3">
+              {{ bsp_sel_form.sdate|as_crispy_field }}
+            </div>
+            <div class="form-group col-md-2 mb-3">
+              {{ bsp_sel_form.edate|as_crispy_field }}
+            </div>
+            <div class="form-group col-md-2 mb-3">
+              {{ bsp_sel_form.yaxis_type|as_crispy_field }}
+            </div>
+            <div class="form-group col-md-2 mb-3">
+              <button type="submit" class="btn btn-primary w-100" style="padding: 0.6rem 1rem;">
+                <i class="fas fa-play mr-2"></i> Simulate
               </button>
-              <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuLink">
-                <a class="dropdown-item" href="#pablo">Action</a>
-                <a class="dropdown-item" href="#pablo">Another action</a>
-                <a class="dropdown-item" href="#pablo">Something else</a>
-              </div>
             </div>
           </div>
-          <div class="card-body ">
-            <div class="table-full-width table-responsive">
-              <table class="table">
-                <tbody>
-                  <tr>
-                    <td>
-                      <div class="form-check">
-                        <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" value="">
-                          <span class="form-check-sign">
-                            <span class="check"></span>
-                          </span>
-                        </label>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="title">Update the Documentation</p>
-                      <p class="text-muted">Dwuamish Head, Seattle, WA 8:47 AM</p>
-                    </td>
-                    <td class="td-actions text-right">
-                      <button type="button" rel="tooltip" title="" class="btn btn-link" data-original-title="Edit Task">
-                        <i class="tim-icons icon-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div class="form-check">
-                        <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" value="" checked="">
-                          <span class="form-check-sign">
-                            <span class="check"></span>
-                          </span>
-                        </label>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="title">GDPR Compliance</p>
-                      <p class="text-muted">The GDPR is a regulation that requires businesses to protect the personal data and privacy of Europe citizens for transactions that occur within EU member states.</p>
-                    </td>
-                    <td class="td-actions text-right">
-                      <button type="button" rel="tooltip" title="" class="btn btn-link" data-original-title="Edit Task">
-                        <i class="tim-icons icon-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div class="form-check">
-                        <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" value="">
-                          <span class="form-check-sign">
-                            <span class="check"></span>
-                          </span>
-                        </label>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="title">Solve the issues</p>
-                      <p class="text-muted">Fifty percent of all respondents said they would be more likely to shop at a company </p>
-                    </td>
-                    <td class="td-actions text-right">
-                      <button type="button" rel="tooltip" title="" class="btn btn-link" data-original-title="Edit Task">
-                        <i class="tim-icons icon-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div class="form-check">
-                        <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" value="">
-                          <span class="form-check-sign">
-                            <span class="check"></span>
-                          </span>
-                        </label>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="title">Release v2.0.0</p>
-                      <p class="text-muted">Ra Ave SW, Seattle, WA 98116, SUA 11:19 AM</p>
-                    </td>
-                    <td class="td-actions text-right">
-                      <button type="button" rel="tooltip" title="" class="btn btn-link" data-original-title="Edit Task">
-                        <i class="tim-icons icon-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div class="form-check">
-                        <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" value="">
-                          <span class="form-check-sign">
-                            <span class="check"></span>
-                          </span>
-                        </label>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="title">Export the processed files</p>
-                      <p class="text-muted">The report also shows that consumers will not easily forgive a company once a breach exposing their personal data occurs. </p>
-                    </td>
-                    <td class="td-actions text-right">
-                      <button type="button" rel="tooltip" title="" class="btn btn-link" data-original-title="Edit Task">
-                        <i class="tim-icons icon-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div class="form-check">
-                        <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" value="">
-                          <span class="form-check-sign">
-                            <span class="check"></span>
-                          </span>
-                        </label>
-                      </div>
-                    </td>
-                    <td>
-                      <p class="title">Arival at export process</p>
-                      <p class="text-muted">Capitol Hill, Seattle, WA 12:34 AM</p>
-                    </td>
-                    <td class="td-actions text-right">
-                      <button type="button" rel="tooltip" title="" class="btn btn-link" data-original-title="Edit Task">
-                        <i class="tim-icons icon-pencil"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        </form>
+
+        {% if msg or msg2 or msg_list %}
+        <div class="mt-3 p-3 rounded-xl" style="background: rgba(14, 140, 228, 0.08); border: 1px solid rgba(14, 140, 228, 0.2); border-radius: 0.75rem;">
+          {% if msg %}
+          <div style="font-size: 0.8125rem; font-weight: 600; color: #38A9F6;">
+            {{ msg }}
           </div>
+          {% endif %}
+          {% if msg2 %}
+          <div style="font-size: 0.75rem; color: #94A3B8; margin-top: 0.25rem;">
+            {{ msg2 }}
+          </div>
+          {% endif %}
+          {% if msg_list %}
+          <div style="font-size: 0.75rem; color: #E2E8F0; font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem;">
+            {{ msg_list }}
+          </div>
+          {% endif %}
         </div>
-      </div>
-      <div class="col-lg-6 col-md-12">
-        <div class="card ">
-          <div class="card-header">
-            <h4 class="card-title"> Simple Table</h4>
-          </div>
-          <div class="card-body">
-            <div class="table-responsive">
-              <table class="table tablesorter " id="">
-                <thead class=" text-primary">
-                  <tr>
-                    <th>
-                      Name
-                    </th>
-                    <th>
-                      Country
-                    </th>
-                    <th>
-                      City
-                    </th>
-                    <th class="text-center">
-                      Salary
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      Dakota Rice
-                    </td>
-                    <td>
-                      Niger
-                    </td>
-                    <td>
-                      Oud-Turnhout
-                    </td>
-                    <td class="text-center">
-                      $36,738
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      Minerva Hooper
-                    </td>
-                    <td>
-                      Curaçao
-                    </td>
-                    <td>
-                      Sinaai-Waas
-                    </td>
-                    <td class="text-center">
-                      $23,789
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      Sage Rodriguez
-                    </td>
-                    <td>
-                      Netherlands
-                    </td>
-                    <td>
-                      Baileux
-                    </td>
-                    <td class="text-center">
-                      $56,142
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      Philip Chaney
-                    </td>
-                    <td>
-                      Korea, South
-                    </td>
-                    <td>
-                      Overland Park
-                    </td>
-                    <td class="text-center">
-                      $38,735
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      Doris Greene
-                    </td>
-                    <td>
-                      Malawi
-                    </td>
-                    <td>
-                      Feldkirchen in Kärnten
-                    </td>
-                    <td class="text-center">
-                      $63,542
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      Mason Porter
-                    </td>
-                    <td>
-                      Chile
-                    </td>
-                    <td>
-                      Gloucester
-                    </td>
-                    <td class="text-center">
-                      $78,615
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      Jon Porter
-                    </td>
-                    <td>
-                      Portugal
-                    </td>
-                    <td>
-                      Gloucester
-                    </td>
-                    <td class="text-center">
-                      $98,615
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        {% endif %}
+
       </div>
     </div>
--->
+  </div>
+</div>
+
+<!-- Primary Portfolio Charts & Returns -->
+<div class="row">
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Compounded Portfolio Performance vs Benchmark
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_reset }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Portfolio Holdings, Returns & Risk Metrics
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ tbl_div_reset_beta }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Normalized & Individual Trajectories -->
+<div class="row">
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Normalized Movement Across Basket Constituents
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_norm }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Constituent Stock Prices
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_stock }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Benchmark Market Trajectory
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_ben }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock content %}
-
-<!-- Specific Page JS goes HERE  -->
-{% block javascripts %}
-
-  <script>
-    $(document).ready(function() {
-      // Javascript method's body can be found in assets/js/demos.js
-      demo.initDashboardPageCharts();
-
-    });
-  </script>
-
-{% endblock javascripts %}

@@ -600,7 +600,7 @@ def ia_populate_cycle(ip_df, cycles):
 def ia_go_table(rm_df, size, title):
     if rm_df is None or rm_df.empty:
         fig = go.Figure()
-        fig.update_layout(title=title + " (No Data Available)", paper_bgcolor="hsl(220,25%,18%)", font=dict(color="white"))
+        fig.update_layout(title=title + " (No Data Available)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
         return plot(fig, output_type='div')
 
     fig = go.Figure()
@@ -612,22 +612,29 @@ def ia_go_table(rm_df, size, title):
         wd = 1600
         ht = 1600
     else:
-        wd = 1100
-        ht = max(100, 29 * (rm_df.shape[0]))
+        wd = None
+        ht = max(120, 32 * (rm_df.shape[0] + 1))
 
     fig.add_trace(go.Table(
         header=dict(values=list(rm_df.columns),
                     align='center',
-                    fill=dict(color="black")),
+                    fill=dict(color="#131B2B"),
+                    font=dict(color="#38A9F6", size=12, family="Plus Jakarta Sans, sans-serif")),
         cells=dict(values=rm_df.transpose(),
                    align='center',
-                   fill=dict(color="grey")),
+                   fill=dict(color="#0D131F"),
+                   font=dict(color="#F8FAFC", size=11, family="JetBrains Mono, monospace")),
     ))
 
-    fig.update_layout(width=wd, height=ht)
-    fig.update_layout(paper_bgcolor="hsl(220,25%,18%)",
-                      font=dict(color="white"),
-                      title=title)
+    if wd is not None:
+        fig.update_layout(width=wd, height=ht)
+    else:
+        fig.update_layout(autosize=True, height=ht)
+
+    fig.update_layout(paper_bgcolor="#0D131F",
+                      font=dict(color="#F8FAFC", family="Plus Jakarta Sans, sans-serif"),
+                      title=title,
+                      margin=dict(l=10, r=10, t=40, b=10))
 
     return plot(fig, output_type='div')
 
@@ -872,7 +879,7 @@ def iterate_clusters(pret_df, no_clusters, no_iteration):
 def ia_go_treeplot(port_df, title):
     if port_df is None or port_df.empty or port_df.shape[0] < 2 or port_df.shape[1] < 2:
         fig = go.Figure()
-        fig.update_layout(title=title + " (Insufficient Data)", paper_bgcolor="hsl(220,25%,18%)", font=dict(color="white"))
+        fig.update_layout(title=title + " (Insufficient Data)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
         empty_div = plot(fig, output_type='div')
         return (empty_div, empty_div, empty_div)
 
@@ -882,7 +889,7 @@ def ia_go_treeplot(port_df, title):
 
     if port_df.empty or len(port_df.columns) == 0:
         fig = go.Figure()
-        fig.update_layout(title=title + " (Insufficient Data)", paper_bgcolor="hsl(220,25%,18%)", font=dict(color="white"))
+        fig.update_layout(title=title + " (Insufficient Data)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
         empty_div = plot(fig, output_type='div')
         return (empty_div, empty_div, empty_div)
 
@@ -899,8 +906,7 @@ def ia_go_treeplot(port_df, title):
     cl_iter_df, cl_iter_list = iterate_clusters(pret_df, min(5, max(1, len(st_series))), 29)
     mini_df["sector"] = cl_iter_list if len(cl_iter_list) == len(mini_df) else ["Sector 1"] * len(mini_df)
 
-    wd = 1000
-    ht = 800
+    ht = 600
 
     pca_df = pd.DataFrame(pca_result if len(pca_result) == len(st_series) else np.zeros((len(st_series), 2)), columns=["dim1", "dim2"])
     pca_df["stock"] = st_series.index.tolist()
@@ -909,11 +915,11 @@ def ia_go_treeplot(port_df, title):
     pca_df["size"] = pca_df["size"].fillna(1.0)
 
     fig_scat = px.scatter(pca_df, x="dim1", y="dim2", size="size", color="sector", hover_name="stock")
-    fig_scat.update_layout(width=wd, height=ht)
+    fig_scat.update_layout(autosize=True, height=ht, paper_bgcolor="#0D131F", plot_bgcolor="#090D15", font=dict(color="#F8FAFC"))
 
     fig = px.treemap(mini_df, path=["sector", "stock", "gain"], values="end", color="beta",
                      color_continuous_scale='RdBu_r')
-    fig.update_layout(width=wd, height=ht)
+    fig.update_layout(autosize=True, height=ht, paper_bgcolor="#0D131F", font=dict(color="#F8FAFC"))
 
     if not corr_df.empty:
         corr_df["cmean"] = corr_df.mean(axis=1)
@@ -922,8 +928,8 @@ def ia_go_treeplot(port_df, title):
         corr_df = corr_df.sort_values(axis=0, by=["cmean"])
         corr_df = corr_df.sort_values(axis=1, by=["rmean"])
         fig_corr = go.Figure()
-        fig_corr.add_trace(go.Heatmap(z=corr_df.values, x=corr_df.index.values, y=corr_df.columns.values))
-        fig_corr.update_layout(width=corr_df.shape[0] * 30, height=corr_df.shape[0] * 30)
+        fig_corr.add_trace(go.Heatmap(z=corr_df.values, x=corr_df.index.values, y=corr_df.columns.values, colorscale='Viridis'))
+        fig_corr.update_layout(autosize=True, height=max(400, corr_df.shape[0] * 32), paper_bgcolor="#0D131F", font=dict(color="#F8FAFC"))
     else:
         fig_corr = go.Figure()
 
@@ -933,11 +939,8 @@ def ia_go_treeplot(port_df, title):
 def ia_go_graph(prices_df, mode, m2, y_scale, title):
     if prices_df is None or prices_df.empty or len(prices_df.columns) == 0 or len(prices_df) == 0:
         fig = go.Figure()
-        fig.update_layout(title=title + " (No Data Available)", paper_bgcolor="hsl(220,25%,18%)", font=dict(color="white"))
+        fig.update_layout(title=title + " (No Data Available)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
         return plot(fig, output_type='div')
-
-    wd = 1100
-    ht = 600
 
     try:
         first_series = prices_df[prices_df.columns[0]].dropna()
@@ -961,31 +964,15 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title):
 
     if mode == 1 and len(prices_df.columns) > 0:
         fig.add_trace(go.Scatter(x=prices_df.index, y=(round(mx * 1.05, 0)) * prices_df[prices_df.columns[-1]],
-                                 line_color='hsl(0,90%,90)', fill='tozeroy', mode='lines', name=str(prices_df.columns[-1])))
+                                 line_color='rgba(14, 140, 228, 0.4)', fill='tozeroy', mode='lines', name=str(prices_df.columns[-1])))
 
+    palette = ["#0E8CE4", "#10B981", "#38BDF8", "#F59E0B", "#A855F7", "#EC4899", "#E2E8F0"]
     ctr = 0
     for col in prices_df.columns[0:-1]:
-        if m2 == 0:
-            fig.add_trace(
-                go.Scatter(x=prices_df.index, y=prices_df[col], line_color='hsl(' + str(360 - ctr * 120) + ',100%,45%)',
-                           mode='lines', name=str(col)))
-        elif m2 == 1:
-            fig.add_trace(go.Scatter(x=prices_df.index, y=prices_df[col],
-                                     line_color='hsl(' + str(360 - (ctr % 2) * 120) + ',' + str(
-                                         100 - (ctr % 4) * 5) + '%,' + str(54 - (ctr % 4) * 4) + '%)', mode='lines',
-                                     name=str(col)))
-        elif m2 == "b":
-            fig.add_trace(go.Scatter(x=prices_df.index, y=prices_df[col],
-                                     line_color='hsl(' + str(240) + ',' + str(100 - (ctr % 4) * 5) + '%,' + str(
-                                         54 - (ctr % 4) * 4) + '%)', mode='lines', name=str(col)))
-        elif m2 == "r":
-            fig.add_trace(go.Scatter(x=prices_df.index, y=prices_df[col],
-                                     line_color='hsl(' + str(360) + ',' + str(100 - (ctr % 4) * 5) + '%,' + str(
-                                         54 - (ctr % 4) * 4) + '%)', mode='lines', name=str(col)))
-        else:
-            fig.add_trace(go.Scatter(x=prices_df.index, y=prices_df[col],
-                                     line_color='hsl(' + str(360) + ',' + str(100 - (ctr % 4) * 5) + '%,' + str(
-                                         54 - (ctr % 4) * 4) + '%)', mode='lines', name=str(col)))
+        cur_color = palette[ctr % len(palette)]
+        fig.add_trace(go.Scatter(x=prices_df.index, y=prices_df[col],
+                                 line=dict(color=cur_color, width=2.2),
+                                 mode='lines', name=str(col)))
         ctr = ctr + 1
 
     try:
@@ -998,16 +985,29 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title):
     except Exception:
         pass
 
-    fig.update_layout(width=wd, height=ht)
-    fig.update_layout(paper_bgcolor="hsl(220,25%,18%)",
-                      font=dict(color="white"),
-                      title=title,
-                      showlegend=False)
-    fig.update_xaxes(mirror=True)
+    fig.update_layout(
+        autosize=True,
+        height=500,
+        paper_bgcolor="#0D131F",
+        plot_bgcolor="#090D15",
+        font=dict(color="#F8FAFC", family="Plus Jakarta Sans, sans-serif"),
+        title=dict(text=title, font=dict(color="#F8FAFC", size=13)),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color="#94A3B8", size=11, family="JetBrains Mono, monospace")
+        ),
+        margin=dict(l=30, r=20, t=55, b=35)
+    )
+    fig.update_xaxes(mirror=True, gridcolor="rgba(30, 41, 59, 0.7)", zerolinecolor="#1E293B")
     try:
-        fig.update_yaxes(mirror=True, type=y_scale)
+        fig.update_yaxes(mirror=True, type=y_scale, gridcolor="rgba(30, 41, 59, 0.7)", zerolinecolor="#1E293B")
     except Exception:
-        fig.update_yaxes(mirror=True)
+        fig.update_yaxes(mirror=True, gridcolor="rgba(30, 41, 59, 0.7)", zerolinecolor="#1E293B")
 
     return plot(fig, output_type='div')
 

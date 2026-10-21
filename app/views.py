@@ -25,12 +25,13 @@ import datetime as dt
 def index(request):
 
 
-    plot_div_reset= "<div><h4 style=\"text-align:center; color:yellow;\"><b> </b></h4></div>"
-    tbl_div_reset_beta= "<div><h4 style=\"text-align:center; color:yellow;\"><b> </b></h4></div>"
-    tbl_div_fin= "<div><h4 style=\"text-align:center; color:yellow;\"><b> </b></h4></div>"
-    plot_div_norm= "<div><h4 style=\"text-align:center; color:yellow;\"><b> </b></h4></div>"
-    plot_div_stock= "<div><h4 style=\"text-align:center; color:yellow;\"><b> </b></h4></div>"
-    plot_div_ben = "<div><h4 style=\"text-align:center; color:yellow;\"><b> </b></h4></div>"
+    placeholder_msg = '<div style="padding: 3rem 1rem; text-align: center; color: #64748B; font-size: 0.8125rem;"><i class="fas fa-chart-line mb-2" style="font-size: 1.5rem; opacity: 0.5; display: block;"></i>Configure parameters above and click <strong>Run Analysis</strong> to generate model outputs.</div>'
+    plot_div_reset = placeholder_msg
+    tbl_div_reset_beta = ""
+    tbl_div_fin = ""
+    plot_div_norm = ""
+    plot_div_stock = ""
+    plot_div_ben = ""
     #plot_div_reset, tbl_div_reset_beta, tbl_div_fin, plot_div_norm, plot_div_stock, plot_div_ben = ia_stockcharts.ia_plot_prices( ["^NSEI", "ITC.NS"], dt.datetime.now().date() - :dt.timedelta(days=365.5*15) , dt.datetime.now().date() - dt.timedelta(days=1), "log")
 
     form = ceform_scale(request.POST or None)
@@ -68,12 +69,13 @@ def index(request):
 
 def ccan(request):
 
-    plot_div_reset = "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>"
-    tbl_div_reset_beta = "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>"
-    plot_div_norm = "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>"
-    plot_div_stock = "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>"
-    plot_div_ben = "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>"
-    plot_div_scat = "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>"
+    placeholder_msg = '<div style="padding: 3rem 1rem; text-align: center; color: #64748B; font-size: 0.8125rem;"><i class="fas fa-gift mb-2" style="font-size: 1.5rem; opacity: 0.5; display: block;"></i>Upload an Excel allocation file and click <strong>Simulate</strong> to run the Coffee Can backtest.</div>'
+    plot_div_reset = placeholder_msg
+    tbl_div_reset_beta = ""
+    plot_div_norm = ""
+    plot_div_stock = ""
+    plot_div_ben = ""
+    plot_div_scat = ""
 
     form = coffee_can_form(request.POST or None, request.FILES or None)
     message = "Please upload portfolio & fill details"
@@ -113,7 +115,7 @@ def ccan(request):
         print(form.errors)
 
     context = {'bsp_sel_form':form,'msg': message,'msg2':msg2, 'msg_list':msg_list,'plot_div_reset': plot_div_reset , 'tbl_div_reset_beta': tbl_div_reset_beta, 'plot_div_norm': plot_div_norm, 'plot_div_stock': plot_div_stock, 'plot_div_ben': plot_div_ben, 'plot_div_scat': plot_div_scat}
-    context['segment'] = 'index'
+    context['segment'] = 'coffee-can'
     #return HttpResponse(html_template.render(context, request))
     print("%%%%", "Completing views and returning ...")
     return render(request,"coffee-can.html", context)

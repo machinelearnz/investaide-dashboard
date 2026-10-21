@@ -1,81 +1,198 @@
-<!--
-=========================================================
-* * Black Dashboard - v1.0.1
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/black-dashboard
-* Copyright 2019 Creative Tim (https://www.creative-tim.com)
-
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
--->
 <!DOCTYPE html>
 <html lang="en">
-
-<!-- Static assets -->
 {% load static %}
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-  <link rel="apple-touch-icon" sizes="76x76" href="{% static 'assets/img/apple-icon.png' %}">
-  <link rel="icon" type="image/png"          href="{% static 'assets/img/favicon.png'    %}">
+  <link rel="icon" type="image/png" href="{% static 'assets/img/favicon.png' %}">
 
   <title>
-    InvestAide - {% block title %}{% endblock %} | Rohit Gajare
+    InvestAide - {% block title %}{% endblock %} | rohitcuriosity.com
   </title>
 
-  <!--     Fonts and icons     -->
-  <link href="https://fonts.googleapis.com/css?family=Poppins:200,300,400,600,700,800" rel="stylesheet" />
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
 
-  <!-- Nucleo Icons -->
+  <!-- Core Dashboard CSS -->
   <link href="{% static 'assets/css/nucleo-icons.css' %}" rel="stylesheet" />
-  <!-- CSS Files -->
   <link href="{% static 'assets/css/black-dashboard.css' %}" rel="stylesheet" />
-  <!-- CSS Just for demo purpose, don't include it in your project -->
-  <link href="{% static 'assets/demo/demo.css' %}" rel="stylesheet" />
 
-  <!-- Specific Page CSS goes HERE  -->
+  <!-- Option A: Design System Alignment with rohitcuriosity.com -->
+  <style>
+    :root {
+      --bg-obsidian: #0B0F17;
+      --bg-surface: #0D131F;
+      --bg-input: #131B2B;
+      --border-subtle: rgba(30, 41, 59, 0.8);
+      --border-focus: #0E8CE4;
+      --brand-blue: #0E8CE4;
+      --brand-sky: #38A9F6;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --bull-emerald: #10B981;
+      --bear-rose: #F43F5E;
+    }
+
+    /* Typography */
+    body, .main-panel, .content, p, span, input, select, button, label {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono, code, pre, .badge-mono, table td, table th {
+      font-family: 'JetBrains Mono', monospace !important;
+    }
+
+    /* Base Canvas & Backgrounds */
+    body, html {
+      background-color: var(--bg-obsidian) !important;
+      color: var(--text-primary) !important;
+      overflow-x: hidden;
+    }
+    .wrapper {
+      background: var(--bg-obsidian) !important;
+    }
+    .main-panel {
+      width: 100% !important;
+      float: none !important;
+      min-height: 100vh;
+      background: var(--bg-obsidian) !important;
+      border-left: none !important;
+      display: flex;
+      flex-direction: column;
+    }
+    .content {
+      padding: 1.75rem 2rem 3rem 2rem !important;
+      flex: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Cards & Containers */
+    .card, .card-chart {
+      background: var(--bg-surface) !important;
+      border: 1px solid var(--border-subtle) !important;
+      border-radius: 1.125rem !important;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.04) !important;
+      margin-bottom: 1.75rem !important;
+      overflow: hidden;
+    }
+    .card-header {
+      background: transparent !important;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.6) !important;
+      padding: 1.25rem 1.5rem !important;
+    }
+    .card-body {
+      padding: 1.5rem !important;
+    }
+
+    /* Form Controls & Inputs */
+    .form-control, input[type="text"], input[type="date"], select, .custom-select {
+      background-color: var(--bg-input) !important;
+      border: 1px solid rgba(51, 65, 85, 0.8) !important;
+      color: var(--text-primary) !important;
+      border-radius: 0.75rem !important;
+      padding: 0.55rem 0.875rem !important;
+      font-size: 0.85rem !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      transition: all 0.2s ease-in-out;
+      box-shadow: none !important;
+    }
+    .form-control:focus, input[type="text"]:focus, input[type="date"]:focus, select:focus {
+      border-color: var(--border-focus) !important;
+      box-shadow: 0 0 0 3px rgba(14, 140, 228, 0.25) !important;
+      color: #FFFFFF !important;
+    }
+    label {
+      color: var(--text-secondary) !important;
+      font-size: 0.725rem !important;
+      font-weight: 600 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.06em !important;
+      margin-bottom: 0.4rem !important;
+    }
+
+    /* Buttons */
+    .btn-primary, button[type="submit"] {
+      background: linear-gradient(135deg, #0E8CE4 0%, #38A9F6 100%) !important;
+      border: none !important;
+      color: #FFFFFF !important;
+      font-weight: 600 !important;
+      border-radius: 0.75rem !important;
+      padding: 0.625rem 1.5rem !important;
+      font-size: 0.85rem !important;
+      box-shadow: 0 4px 14px rgba(14, 140, 228, 0.35) !important;
+      transition: all 0.2s ease !important;
+      cursor: pointer;
+    }
+    .btn-primary:hover, button[type="submit"]:hover {
+      background: linear-gradient(135deg, #0b7bc9 0%, #2e93d8 100%) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(14, 140, 228, 0.45) !important;
+    }
+
+    /* Headings & Texts */
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--text-primary) !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.015em;
+    }
+
+    /* Tables */
+    .table {
+      color: var(--text-primary) !important;
+    }
+    .table thead th {
+      border-top: none !important;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.8) !important;
+      color: var(--brand-sky) !important;
+      font-size: 0.75rem !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      background: rgba(19, 27, 43, 0.7) !important;
+    }
+    .table tbody td {
+      border-top: 1px solid rgba(30, 41, 59, 0.6) !important;
+      font-size: 0.8125rem !important;
+      color: #E2E8F0 !important;
+    }
+
+    /* Hide sidebar and floating cog */
+    .sidebar, .fixed-plugin {
+      display: none !important;
+    }
+
+    /* Plotly Chart Container enhancements */
+    .plotly-graph-div {
+      border-radius: 0.75rem !important;
+      overflow: hidden !important;
+    }
+  </style>
+
   {% block stylesheets %}{% endblock stylesheets %}
-
 </head>
 
-<body class="">
+<body>
   <div class="wrapper">
-
-    {% include 'includes/sidebar.html' %}
-
     <div class="main-panel">
 
       {% include 'includes/navigation.html' %}
 
       <div class="content">
-
         {% block content %}{% endblock content %}
-
       </div>
 
       {% include 'includes/footer.html' %}
 
     </div>
-    
   </div>
-
-  {% include 'includes/fixed-plugin.html' %}
 
   {% include 'includes/scripts.html' %}
 
-  {% include 'includes/scripts-sidebar.html' %}
-
-  <!-- Specific Page JS goes HERE  -->
   {% block javascripts %}{% endblock javascripts %}
-
 </body>
-
 </html>

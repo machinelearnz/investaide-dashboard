@@ -19,7 +19,17 @@ SECRET_KEY = config('SECRET_KEY', default='S#perS3crEt_1122')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 # load production server from .env
-ALLOWED_HOSTS = ['investaide.pythonanywhere.com', 'localhost', '127.0.0.1', 'testserver', '*', config('SERVER', default='127.0.0.1')]
+ALLOWED_HOSTS = ['investaide.pythonanywhere.com', '.onrender.com', 'investaide.rohitcuriosity.com', 'localhost', '127.0.0.1', 'testserver', '*', config('SERVER', default='127.0.0.1')]
+
+# CSRF Trusted Origins for HTTPS hosting on Render / Custom Domain
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://*.rohitcuriosity.com',
+    'https://rohitcuriosity.com',
+    'https://*.pythonanywhere.com',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
 
 # Application definition
 
@@ -130,5 +140,8 @@ print("&&&&&", MEDIA_ROOT)
 STATICFILES_DIRS = (
     os.path.join(CORE_DIR, 'core/static'),
 )
+
+# WhiteNoise production static file compression
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 #############################################################
 #############################################################

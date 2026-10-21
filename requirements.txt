@@ -19,6 +19,7 @@ cycler>=0.10.0
 dj-database-url>=0.5.0
 Django>=2.2.10
 django-crispy-forms>=1.11.2
+crispy-bootstrap4>=2022.1
 et-xmlfile>=1.1.0	
 excalibur-py>=0.4.3
 Flask>=1.1.2
