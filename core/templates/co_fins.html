@@ -60,15 +60,15 @@
             <h4 style="text-align:center; color:yellow;"><b> {{msg}} </b></h4>
           </div>
           <div class="col-lg-12">
-            <div class="card card-chart">
-              {% autoescape off %}
-              {{ tbl_div_fin}}
-              {% endautoescape %}
-
-              {% autoescape off %}
-              {{ tbl_div_fin2}}
-              {% endautoescape %}
-            </div>
+            {% if tbl_div_financials %}
+            {% autoescape off %}
+            {{ tbl_div_financials }}
+            {% endautoescape %}
+            {% elif tbl_div_fin and tbl_div_fin != "<div><h6 style=\"text-align:center; color:yellow;\"> </h6></div>" %}
+            {% autoescape off %}
+            {{ tbl_div_fin }}
+            {% endautoescape %}
+            {% endif %}
           </div>
 
         </div>

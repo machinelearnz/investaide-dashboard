@@ -49,16 +49,19 @@
           </div>
 
           <div class="form-row align-items-end">
-            <div class="form-group col-md-3 mb-3">
+            <div class="form-group col-lg-2 col-md-4 mb-3">
               {{ bsp_sel_form.sdate|as_crispy_field }}
             </div>
-            <div class="form-group col-md-3 mb-3">
+            <div class="form-group col-lg-2 col-md-4 mb-3">
               {{ bsp_sel_form.edate|as_crispy_field }}
             </div>
-            <div class="form-group col-md-3 mb-3">
+            <div class="form-group col-lg-2 col-md-4 mb-3">
               {{ bsp_sel_form.yaxis_type|as_crispy_field }}
             </div>
-            <div class="form-group col-md-3 mb-3">
+            <div class="form-group col-lg-3 col-md-6 mb-3">
+              {{ bsp_sel_form.cycle_type|as_crispy_field }}
+            </div>
+            <div class="form-group col-lg-3 col-md-6 mb-3">
               <button type="submit" class="btn btn-primary w-100" style="padding: 0.6rem 1rem;">
                 <i class="fas fa-chart-line mr-2"></i> Run Analysis
               </button>
@@ -88,6 +91,14 @@
 
 <!-- Primary Valuation & Metrics -->
 <div class="row">
+  {% if tbl_div_expectations %}
+  <div class="col-lg-12">
+    {% autoescape off %}
+    {{ tbl_div_expectations }}
+    {% endautoescape %}
+  </div>
+  {% endif %}
+
   <div class="col-lg-12">
     <div class="card">
       <div class="card-header">
@@ -117,6 +128,65 @@
       </div>
     </div>
   </div>
+
+  {% if plot_div_eps_growth %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Quarterly YoY TTM EPS Growth (%)
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_eps_growth }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tbl_div_eps %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Quarterly & Trailing (TTM) EPS Ledger
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ tbl_div_eps }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if plot_div_financial_trends %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Annual Financial Trajectory (Revenues, Profits, Debt & Cash Flow)
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_financial_trends }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tbl_div_financials %}
+  <div class="col-lg-12">
+    {% autoescape off %}
+    {{ tbl_div_financials }}
+    {% endautoescape %}
+  </div>
+  {% endif %}
 </div>
 
 <!-- Secondary Analytical Breakdowns -->

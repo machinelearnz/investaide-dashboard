@@ -28,16 +28,18 @@ def index(request):
     placeholder_msg = '<div style="padding: 3rem 1rem; text-align: center; color: #64748B; font-size: 0.8125rem;"><i class="fas fa-chart-line mb-2" style="font-size: 1.5rem; opacity: 0.5; display: block;"></i>Configure parameters above and click <strong>Run Analysis</strong> to generate model outputs.</div>'
     plot_div_reset = placeholder_msg
     tbl_div_reset_beta = ""
-    tbl_div_fin = ""
+    tbl_div_eps = ""
+    tbl_div_financials = ""
+    tbl_div_expectations = ""
+    plot_div_financial_trends = ""
+    plot_div_eps_growth = ""
     plot_div_norm = ""
     plot_div_stock = ""
     plot_div_ben = ""
-    #plot_div_reset, tbl_div_reset_beta, tbl_div_fin, plot_div_norm, plot_div_stock, plot_div_ben = ia_stockcharts.ia_plot_prices( ["^NSEI", "ITC.NS"], dt.datetime.now().date() - :dt.timedelta(days=365.5*15) , dt.datetime.now().date() - dt.timedelta(days=1), "log")
 
     form = ceform_scale(request.POST or None)
     message = "Please Enter field details"
     msg2 = ""
-    #message = "Chart of : NSE vs. ITC Limited"
     print("%%%%", "Here1")
     html_template = loader.get_template( 'index.html' )
     if form.is_valid():
@@ -49,23 +51,33 @@ def index(request):
         sdate = d1['sdate']
         edate = d1['edate']
         yaxis_type = d1['yaxis_type']
+        cycle_type = d1.get('cycle_type', 'bull_bear')
         form.save()
-        message = "Compare : " + ia_sinfo.stock_name_code_map[ben][2] +  " vs. " + ia_sinfo.stock_name_code_map[si][2] + " across market cycles"
+        cycle_label_map = {
+            "bull_bear": "market cycles",
+            "calendar_year": "calendar years",
+            "financial_year": "financial years",
+            "quarterly": "quarters",
+            "monthly": "months",
+        }
+        cycle_name = cycle_label_map.get(cycle_type, "market cycles")
+        message = "Compare : " + ia_sinfo.stock_name_code_map[ben][2] +  " vs. " + ia_sinfo.stock_name_code_map[si][2] + " across " + cycle_name
 
-        plot_div_reset, tbl_div_reset_beta, tbl_div_fin, plot_div_norm,plot_div_stock, plot_div_ben,msg2 = ia_stockcharts.ia_plot_prices([ben, si], sdate,edate,yaxis_type)
-        #plot_div1, plot_div2, plot_div3, plot_div4,plot_div5, plot_div6 = ia_stockcharts.ia_plot_prices([ben, si], sdate,edate,yaxis_type)
-        #plot_div1, plot_div2, plot_div3, plot_div4,plot_div5, plot_div6 = ia_stockcharts.ia_plot_prices([ben, si], sdate,edate)
+        plot_div_reset, tbl_div_reset_beta, tbl_div_eps, plot_div_eps_growth, plot_div_norm, plot_div_stock, plot_div_ben, msg2 = ia_stockcharts.ia_plot_prices([ben, si], sdate, edate, yaxis_type, cycle_type=cycle_type)
+        si_name = ia_sinfo.stock_name_code_map.get(si, [None, None, si])[2]
+        plot_div_financial_trends = ia_stockcharts.ia_go_annual_financial_trends_chart(si, sname=si_name)
+        tbl_div_financials = ia_stockcharts.ia_get_company_financials_widget(si, sname=si_name)
+        tbl_div_expectations = ia_stockcharts.ia_get_security_expectations_widget(si, sname=si_name)
 
     else:
         print("%%%%", "Here3")
         print("invalid")
         print(form.errors)
 
-    context = {'bsp_sel_form':form,'msg': message,'msg2': msg2, 'plot_div_reset': plot_div_reset , 'tbl_div_reset_beta': tbl_div_reset_beta, 'plot_div_norm': plot_div_norm, 'plot_div_stock': plot_div_stock, 'plot_div_ben': plot_div_ben}
+    context = {'bsp_sel_form': form, 'msg': message, 'msg2': msg2, 'plot_div_reset': plot_div_reset, 'tbl_div_reset_beta': tbl_div_reset_beta, 'tbl_div_eps': tbl_div_eps, 'plot_div_financial_trends': plot_div_financial_trends, 'tbl_div_financials': tbl_div_financials, 'tbl_div_expectations': tbl_div_expectations, 'plot_div_eps_growth': plot_div_eps_growth, 'plot_div_norm': plot_div_norm, 'plot_div_stock': plot_div_stock, 'plot_div_ben': plot_div_ben}
     context['segment'] = 'index'
-    #return HttpResponse(html_template.render(context, request))
     print("%%%%", "Here4")
-    return render(request,"index.html", context)
+    return render(request, "index.html", context)
 
 def ccan(request):
 
@@ -149,7 +161,7 @@ def cofin(request):
         print("%%%%", "Form Invalid - views")
         print(form.errors)
 
-    context = {'bsp_sel_form':form,'msg': message,'msg2':msg2,'tbl_div_fin': tbl_div_fin,'tbl_div_fin2': tbl_div_fin2 }
+    context = {'bsp_sel_form': form, 'msg': message, 'msg2': msg2, 'tbl_div_fin': tbl_div_fin, 'tbl_div_fin2': tbl_div_fin2, 'tbl_div_financials': tbl_div_fin}
     context['segment'] = 'index'
     #return HttpResponse(html_template.render(context, request))
     print("%%%%", "Completing views and returning ...")

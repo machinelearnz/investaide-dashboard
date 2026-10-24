@@ -17,6 +17,15 @@ yaxis_type = [
                 ("linear", "Linear")
                ]
 
+cycle_types = [
+    ("bull_bear", "Bull & Bear Cycles"),
+    ("calendar_year", "Calendar Year"),
+    ("financial_year", "Financial Year"),
+    ("quarterly", "Quarterly"),
+    ("monthly", "Monthly"),
+]
+def_cycle_type = "bull_bear"
+
 
 indices =   [
             ("^NSEI","NIFTY50"),

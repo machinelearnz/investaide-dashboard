@@ -14,6 +14,7 @@ class c_entry_model2(models.Model):
     sdate = models.DateField()
     edate = models.DateField()
     yaxis_type = models.CharField(max_length=20)
+    cycle_type = models.CharField(max_length=50, default='bull_bear')
 
 class coffee_can_model(models.Model):
     portfolio_excel = models.FileField(upload_to='ccanport/%Y/%m/%d')

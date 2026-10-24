@@ -20,10 +20,11 @@ class ceform_scale(forms.ModelForm):
     benchmark = forms.ChoiceField(initial= ia_stat.def_index,label='Benchmark', choices=indices)
     stock_index = forms.ChoiceField(initial= ia_stat.def_stock, label='Stock/Index', choices=stocks)
     yaxis_type = forms.ChoiceField(initial= ia_stat.def_yaxis, label='Y-axis Scale', choices=ia_stat.yaxis_type)
+    cycle_type = forms.ChoiceField(initial= ia_stat.def_cycle_type, label='Cycle Breakdown', choices=ia_stat.cycle_types)
 
     class Meta:
         model = c_entry_model2
-        fields = ["benchmark", "stock_index", "sdate", "edate", "yaxis_type"]
+        fields = ["benchmark", "stock_index", "sdate", "edate", "yaxis_type", "cycle_type"]
         ''' widgets = {
             'benchmark': forms.ChoiceField(attrs={ 'style': 'background-color: black'}),
             'stock_index': forms.ChoiceField(attrs={'style': 'background-color: black'}),
