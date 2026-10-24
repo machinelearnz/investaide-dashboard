@@ -1783,18 +1783,42 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
         except Exception:
             sname = str(ticker_symbol).replace(".NS", "").replace(".BO", "")
 
+    info = {}
+    fast_info = {}
     try:
         t = yf.Ticker(ticker_symbol)
-        info = t.info
+        try:
+            info = t.info or {}
+            if not isinstance(info, dict):
+                info = {}
+        except Exception as e:
+            print(f"Warning: t.info failed for {ticker_symbol}: {e}")
+            info = {}
+
+        try:
+            fast_info = t.fast_info or {}
+        except Exception:
+            fast_info = {}
     except Exception as e:
-        print(f"Error fetching info for {ticker_symbol}: {e}")
+        print(f"Error initializing ticker for {ticker_symbol}: {e}")
         return ""
 
-    if not info or not isinstance(info, dict):
-        return ""
-
-    # 1. Market Cap
+    # 1. Market Cap (with fast_info fallback)
     market_cap = info.get("marketCap")
+    if market_cap is None and fast_info:
+        try:
+            market_cap = fast_info.get("marketCap") or fast_info.get("market_cap")
+        except Exception:
+            pass
+
+    # Current Market Price (with fast_info fallback)
+    current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+    if current_price is None and fast_info:
+        try:
+            current_price = fast_info.get("lastPrice") or fast_info.get("last_price")
+        except Exception:
+            pass
+
     # 2. One Year Forward EPS Estimate
     forward_eps = info.get("forwardEps")
     # 3. Forward P/E
@@ -1806,8 +1830,48 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     target_high = info.get("targetHighPrice")
     target_median = info.get("targetMedianPrice")
     target_mean = info.get("targetMeanPrice")
-    # Current Market Price
-    current_price = info.get("currentPrice") or info.get("regularMarketPrice")
+
+    # Direct Yahoo quoteSummary fallback if consensus fields are missing
+    if all(x is None for x in [forward_eps, forward_pe, target_mean, target_low]):
+        try:
+            import json
+            import urllib.request
+            q_url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=financialData,defaultKeyStatistics,summaryDetail"
+            q_req = urllib.request.Request(q_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+            })
+            with urllib.request.urlopen(q_req, timeout=4) as q_resp:
+                q_data = json.loads(q_resp.read().decode('utf-8'))
+                res_list = q_data.get('quoteSummary', {}).get('result', [])
+                if res_list:
+                    res_dict = res_list[0]
+                    fin = res_dict.get('financialData', {})
+                    stat = res_dict.get('defaultKeyStatistics', {})
+                    sm = res_dict.get('summaryDetail', {})
+                    def _raw(d, k):
+                        v = d.get(k)
+                        return v.get('raw') if isinstance(v, dict) else v
+
+                    if market_cap is None:
+                        market_cap = _raw(sm, 'marketCap') or _raw(stat, 'marketCap')
+                    if current_price is None:
+                        current_price = _raw(fin, 'currentPrice')
+                    if forward_eps is None:
+                        forward_eps = _raw(stat, 'forwardEps')
+                    if forward_pe is None:
+                        forward_pe = _raw(stat, 'forwardPE') or _raw(sm, 'forwardPE')
+                    if trailing_pe is None:
+                        trailing_pe = _raw(sm, 'trailingPE')
+                    if target_low is None:
+                        target_low = _raw(fin, 'targetLowPrice')
+                    if target_high is None:
+                        target_high = _raw(fin, 'targetHighPrice')
+                    if target_median is None:
+                        target_median = _raw(fin, 'targetMedianPrice')
+                    if target_mean is None:
+                        target_mean = _raw(fin, 'targetMeanPrice')
+        except Exception:
+            pass
 
     # Fallback for trailing_pe if None
     if trailing_pe is None:
