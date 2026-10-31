@@ -10,13 +10,11 @@ from django.http import HttpResponse
 from django import template
 from .forms import ceform_scale, coffee_can_form, co_financials_form
 from django.shortcuts import render
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from plotly.offline import plot
-from plotly.graph_objs import Scatter
 from . import ia_stockcharts
 from . import ia_stock_index_info as ia_sinfo
 import pandas as pd
 import os
+import gc
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.conf import settings
@@ -77,7 +75,9 @@ def index(request):
     context = {'bsp_sel_form': form, 'msg': message, 'msg2': msg2, 'plot_div_reset': plot_div_reset, 'tbl_div_reset_beta': tbl_div_reset_beta, 'tbl_div_eps': tbl_div_eps, 'plot_div_financial_trends': plot_div_financial_trends, 'tbl_div_financials': tbl_div_financials, 'tbl_div_expectations': tbl_div_expectations, 'plot_div_eps_growth': plot_div_eps_growth, 'plot_div_norm': plot_div_norm, 'plot_div_stock': plot_div_stock, 'plot_div_ben': plot_div_ben}
     context['segment'] = 'index'
     print("%%%%", "Here4")
-    return render(request, "index.html", context)
+    resp = render(request, "index.html", context)
+    gc.collect()
+    return resp
 
 def ccan(request):
 
@@ -128,9 +128,10 @@ def ccan(request):
 
     context = {'bsp_sel_form':form,'msg': message,'msg2':msg2, 'msg_list':msg_list,'plot_div_reset': plot_div_reset , 'tbl_div_reset_beta': tbl_div_reset_beta, 'plot_div_norm': plot_div_norm, 'plot_div_stock': plot_div_stock, 'plot_div_ben': plot_div_ben, 'plot_div_scat': plot_div_scat}
     context['segment'] = 'coffee-can'
-    #return HttpResponse(html_template.render(context, request))
     print("%%%%", "Completing views and returning ...")
-    return render(request,"coffee-can.html", context)
+    resp = render(request,"coffee-can.html", context)
+    gc.collect()
+    return resp
 
 def cofin(request):
 

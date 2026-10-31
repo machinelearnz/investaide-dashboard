@@ -20,6 +20,9 @@
   <link href="{% static 'assets/css/nucleo-icons.css' %}" rel="stylesheet" />
   <link href="{% static 'assets/css/black-dashboard.css' %}" rel="stylesheet" />
 
+  <!-- Plotly Core Engine — must load in <head> so Plotly is defined before chart divs render -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
   <!-- Option A: Design System Alignment with rohitcuriosity.com -->
   <style>
     :root {

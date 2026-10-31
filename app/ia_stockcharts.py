@@ -29,8 +29,7 @@ else:
     from . import bse_quarterly as bse_res
 # import seaborn as sn
 # import matplotlib as plt
-from sklearn.cluster import KMeans
-from sklearn.manifold import TSNE
+# sklearn KMeans and TSNE are lazily imported inside ia_get_clusters() to optimize startup RAM
 
 
 ### This file contains all the stock graph plot functions
@@ -1032,7 +1031,7 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
             paper_bgcolor="#0D131F",
             font=dict(color="#94A3B8")
         )
-        return plot(fig, output_type='div')
+        return plot(fig, output_type='div', include_plotlyjs=False)
 
     q_df = eps_df.dropna(subset=['YoY Growth']).sort_values('Date', ascending=True).copy()
     if sdate:
@@ -1055,7 +1054,7 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
             paper_bgcolor="#0D131F",
             font=dict(color="#94A3B8")
         )
-        return plot(fig, output_type='div')
+        return plot(fig, output_type='div', include_plotlyjs=False)
 
     bar_colors = ['#10B981' if v >= 0 else '#EF4444' for v in q_df['YoY Growth']]
     med_growth = float(q_df['YoY Growth'].median())
@@ -1130,7 +1129,7 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
         tickfont=dict(color="#38BDF8", size=10, family="JetBrains Mono, monospace")
     )
 
-    return plot(fig, output_type='div')
+    return plot(fig, output_type='div', include_plotlyjs=False)
 
 
 # ---------------------------------------------------------------------------
@@ -1541,7 +1540,7 @@ def ia_go_annual_financial_trends_chart(ticker_symbol, sname=None, raw_inc=None,
         tickfont=dict(color="#38BDF8", size=10, family="JetBrains Mono, monospace")
     )
 
-    return plot(fig, output_type='div')
+    return plot(fig, output_type='div', include_plotlyjs=False)
 
 
 def ia_get_company_financials_widget(ticker_symbol, sname=None):
@@ -1831,45 +1830,77 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     target_median = info.get("targetMedianPrice")
     target_mean = info.get("targetMeanPrice")
 
-    # Direct Yahoo quoteSummary fallback if consensus fields are missing
+    # Direct Yahoo quoteSummary fallback with cookie + crumb negotiation if consensus fields are missing
     if all(x is None for x in [forward_eps, forward_pe, target_mean, target_low]):
         try:
             import json
-            import urllib.request
-            q_url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=financialData,defaultKeyStatistics,summaryDetail"
-            q_req = urllib.request.Request(q_url, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-            })
-            with urllib.request.urlopen(q_req, timeout=4) as q_resp:
-                q_data = json.loads(q_resp.read().decode('utf-8'))
-                res_list = q_data.get('quoteSummary', {}).get('result', [])
-                if res_list:
-                    res_dict = res_list[0]
-                    fin = res_dict.get('financialData', {})
-                    stat = res_dict.get('defaultKeyStatistics', {})
-                    sm = res_dict.get('summaryDetail', {})
-                    def _raw(d, k):
-                        v = d.get(k)
-                        return v.get('raw') if isinstance(v, dict) else v
+            res_dict = None
+            # Strategy 1: curl_cffi with Chrome impersonation (bypasses datacenter Cloudflare bot protection)
+            try:
+                from curl_cffi import requests as cffi_req
+                sess = cffi_req.Session(impersonate="chrome")
+                sess.get("https://fc.yahoo.com", timeout=4)
+                crumb_res = sess.get("https://query2.finance.yahoo.com/v1/test/getcrumb", timeout=4)
+                if crumb_res.status_code == 200 and crumb_res.text:
+                    crumb = crumb_res.text.strip()
+                    q_url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?crumb={crumb}&modules=financialData,defaultKeyStatistics,summaryDetail"
+                    qs_res = sess.get(q_url, timeout=5)
+                    if qs_res.status_code == 200:
+                        q_data = json.loads(qs_res.text)
+                        res_list = q_data.get('quoteSummary', {}).get('result', [])
+                        if res_list:
+                            res_dict = res_list[0]
+            except Exception as e:
+                print(f"curl_cffi crumb fetch note for {ticker_symbol}: {e}")
 
-                    if market_cap is None:
-                        market_cap = _raw(sm, 'marketCap') or _raw(stat, 'marketCap')
-                    if current_price is None:
-                        current_price = _raw(fin, 'currentPrice')
-                    if forward_eps is None:
-                        forward_eps = _raw(stat, 'forwardEps')
-                    if forward_pe is None:
-                        forward_pe = _raw(stat, 'forwardPE') or _raw(sm, 'forwardPE')
-                    if trailing_pe is None:
-                        trailing_pe = _raw(sm, 'trailingPE')
-                    if target_low is None:
-                        target_low = _raw(fin, 'targetLowPrice')
-                    if target_high is None:
-                        target_high = _raw(fin, 'targetHighPrice')
-                    if target_median is None:
-                        target_median = _raw(fin, 'targetMedianPrice')
-                    if target_mean is None:
-                        target_mean = _raw(fin, 'targetMeanPrice')
+            # Strategy 2: Standard requests fallback
+            if not res_dict:
+                try:
+                    import requests as py_req
+                    sess = py_req.Session()
+                    sess.headers.update({
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+                    })
+                    sess.get("https://fc.yahoo.com", timeout=4)
+                    crumb_res = sess.get("https://query2.finance.yahoo.com/v1/test/getcrumb", timeout=4)
+                    if crumb_res.status_code == 200 and crumb_res.text:
+                        crumb = crumb_res.text.strip()
+                        q_url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?crumb={crumb}&modules=financialData,defaultKeyStatistics,summaryDetail"
+                        qs_res = sess.get(q_url, timeout=5)
+                        if qs_res.status_code == 200:
+                            q_data = json.loads(qs_res.text)
+                            res_list = q_data.get('quoteSummary', {}).get('result', [])
+                            if res_list:
+                                res_dict = res_list[0]
+                except Exception as e:
+                    print(f"standard requests crumb fetch note for {ticker_symbol}: {e}")
+
+            if res_dict:
+                fin = res_dict.get('financialData', {})
+                stat = res_dict.get('defaultKeyStatistics', {})
+                sm = res_dict.get('summaryDetail', {})
+                def _raw(d, k):
+                    v = d.get(k)
+                    return v.get('raw') if isinstance(v, dict) else v
+
+                if market_cap is None:
+                    market_cap = _raw(sm, 'marketCap') or _raw(stat, 'marketCap')
+                if current_price is None:
+                    current_price = _raw(fin, 'currentPrice')
+                if forward_eps is None:
+                    forward_eps = _raw(stat, 'forwardEps')
+                if forward_pe is None:
+                    forward_pe = _raw(stat, 'forwardPE') or _raw(sm, 'forwardPE')
+                if trailing_pe is None:
+                    trailing_pe = _raw(sm, 'trailingPE')
+                if target_low is None:
+                    target_low = _raw(fin, 'targetLowPrice')
+                if target_high is None:
+                    target_high = _raw(fin, 'targetHighPrice')
+                if target_median is None:
+                    target_median = _raw(fin, 'targetMedianPrice')
+                if target_mean is None:
+                    target_mean = _raw(fin, 'targetMeanPrice')
         except Exception:
             pass
 
@@ -2171,6 +2202,8 @@ def get_kmean_cluster(pret_df, ncluster):
         pass
 
     actual_clusters = min(ncluster, max(1, x.shape[0]))
+    from sklearn.cluster import KMeans
+    from sklearn.manifold import TSNE
     kmeans5 = KMeans(n_clusters=actual_clusters)
     cluster_list = kmeans5.fit_predict(x)
     nlist = []
@@ -2320,7 +2353,7 @@ def ia_go_treeplot(port_df, title):
     if port_df is None or port_df.empty or port_df.shape[0] < 2 or port_df.shape[1] < 2:
         fig = go.Figure()
         fig.update_layout(title=title + " (Insufficient Data)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
-        empty_div = plot(fig, output_type='div')
+        empty_div = plot(fig, output_type='div', include_plotlyjs=False)
         return (empty_div, empty_div, empty_div)
 
     port_df = change_headers(port_df)
@@ -2330,7 +2363,7 @@ def ia_go_treeplot(port_df, title):
     if port_df.empty or len(port_df.columns) == 0:
         fig = go.Figure()
         fig.update_layout(title=title + " (Insufficient Data)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
-        empty_div = plot(fig, output_type='div')
+        empty_div = plot(fig, output_type='div', include_plotlyjs=False)
         return (empty_div, empty_div, empty_div)
 
     st_series = port_df.iloc[0]
@@ -2373,14 +2406,14 @@ def ia_go_treeplot(port_df, title):
     else:
         fig_corr = go.Figure()
 
-    return (plot(fig, output_type='div'), plot(fig_corr, output_type='div'), plot(fig_scat, output_type='div'))
+    return (plot(fig, output_type='div', include_plotlyjs=False), plot(fig_corr, output_type='div', include_plotlyjs=False), plot(fig_scat, output_type='div', include_plotlyjs=False))
 
 
 def ia_go_graph(prices_df, mode, m2, y_scale, title, pe_data=None):
     if prices_df is None or prices_df.empty or len(prices_df.columns) == 0 or len(prices_df) == 0:
         fig = go.Figure()
         fig.update_layout(title=title + " (No Data Available)", paper_bgcolor="#0D131F", font=dict(color="#94A3B8"))
-        return plot(fig, output_type='div')
+        return plot(fig, output_type='div', include_plotlyjs=False)
 
     has_phase = (len(prices_df.columns) > 1 and prices_df.columns[-1] == 'Phase')
     price_cols = prices_df.columns[0:-1] if has_phase else prices_df.columns
@@ -2904,7 +2937,7 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title, pe_data=None):
         )
         fig.update_xaxes(mirror=True, gridcolor="rgba(30, 41, 59, 0.7)", zerolinecolor="#1E293B")
 
-    return plot(fig, output_type='div')
+    return plot(fig, output_type='div', include_plotlyjs=False)
 
 
 def ia_st2tk(stock_list):

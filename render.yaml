@@ -5,7 +5,7 @@ services:
     plan: free
     branch: main
     buildCommand: bash build.sh
-    startCommand: gunicorn core.wsgi:application --timeout 120
+    startCommand: gunicorn core.wsgi:application --worker-class gthread --workers 1 --threads 4 --max-requests 500 --max-requests-jitter 50 --timeout 120 --keep-alive 5
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.9
@@ -14,4 +14,4 @@ services:
       - key: DEBUG
         value: "False"
       - key: WEB_CONCURRENCY
-        value: "2"
+        value: "1"
