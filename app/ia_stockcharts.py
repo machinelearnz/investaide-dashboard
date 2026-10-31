@@ -1785,7 +1785,17 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     info = {}
     fast_info = {}
     try:
-        t = yf.Ticker(ticker_symbol)
+        # Use curl_cffi Chrome impersonation session so Yahoo Finance returns full
+        # consensus data (forwardEps, targetMeanPrice, etc.) even from cloud/datacenter
+        # IPs (e.g. Render Free Tier). Without this, Yahoo silently strips analyst fields.
+        _yf_session = None
+        try:
+            from curl_cffi import requests as cffi_req
+            _yf_session = cffi_req.Session(impersonate="chrome")
+        except Exception:
+            pass  # curl_cffi unavailable — fall through to plain yf.Ticker
+
+        t = yf.Ticker(ticker_symbol, session=_yf_session) if _yf_session else yf.Ticker(ticker_symbol)
         try:
             info = t.info or {}
             if not isinstance(info, dict):
@@ -1801,6 +1811,7 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     except Exception as e:
         print(f"Error initializing ticker for {ticker_symbol}: {e}")
         return ""
+
 
     # 1. Market Cap (with fast_info fallback)
     market_cap = info.get("marketCap")
