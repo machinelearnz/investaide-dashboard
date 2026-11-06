@@ -175,7 +175,7 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
         empty_tbl = "<div><h4 style=\"text-align:center; color:orange;\"><b>No data available.</b></h4></div>"
         missing_info = ", ".join([f"{k}: {v}" for k, v in missing_stocks.items()]) if missing_stocks else "No data retrieved"
         msg = f"Unable to fetch price data ({missing_info})"
-        return (empty_plot, empty_tbl, empty_tbl, empty_plot, empty_plot, empty_plot, empty_plot, msg)
+        return (empty_plot, empty_tbl, empty_tbl, empty_plot, empty_plot, empty_plot, empty_plot, empty_plot, msg)
 
     try:
         prices_df = orig_prices_df.loc[act_sdate:act_edate]
@@ -200,6 +200,7 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
         if not ttm_eps.empty and len(prices_df.columns) >= 2:
             pe_data = ia_calc_daily_pe(prices_df[prices_df.columns[1]], ttm_eps, yoy_growth=yoy_growth)
 
+    plot_div_ttm_eps = ia_go_ttm_eps_chart(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate) if stk_ticker else ""
     tbl_div_eps = ia_go_eps_table(eps_df, prices_df[prices_df.columns[1]] if len(prices_df.columns) >= 2 else None, stk_ticker) if stk_ticker else ""
     plot_div_eps_growth = ia_go_growth_graph(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate) if stk_ticker else ""
 
@@ -241,7 +242,7 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
     else:
         msg = "Analysis conducted from : " + (sdate.strftime("%d-%m-%Y") if hasattr(sdate, 'strftime') else str(sdate))
 
-    return (pdiv4, pdiv5, tbl_div_eps, plot_div_eps_growth, pdiv3, pdiv2, pdiv1, msg)
+    return (pdiv4, pdiv5, tbl_div_eps, plot_div_eps_growth, plot_div_ttm_eps, pdiv3, pdiv2, pdiv1, msg)
 
 
 def ia_get_financials(comp, exch, sdate, edate):
@@ -1014,14 +1015,186 @@ def ia_go_eps_table(eps_df, stock_series, ticker_symbol):
     return '\n'.join(html)
 
 
+def ia_go_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None):
+    """
+    Renders the Trailing (TTM) & Absolute Quarterly EPS Trajectory chart.
+    Features:
+    - Chronological quarterly order from left (oldest) to right (latest).
+    - Rolling 4Q TTM EPS as Histogram (Bars) + Continuous Trendline with markers.
+    - Absolute Quarterly Reported EPS as Time Series (Bars + Line).
+    - Historical Median TTM EPS Benchmark reference line.
+    - Interactive 1-click View Mode buttons:
+        1. 'Both (TTM & Quarterly)' - full comparative view
+        2. 'TTM EPS (Histogram & Trend)' - focused on rolling annual earnings
+        3. 'Absolute Quarterly EPS' - focused on quarterly seasonal earnings
+    """
+    sname = short_name(ticker_symbol)
+    if eps_df is None or eps_df.empty or 'TTM EPS' not in eps_df.columns:
+        fig = go.Figure()
+        fig.update_layout(
+            title=dict(
+                text=f"Quarterly & Trailing (TTM) EPS Trajectory ({sname}) - No Data Available",
+                font=dict(color="#94A3B8", size=13, family="Plus Jakarta Sans"),
+                x=0.01,
+                y=0.98
+            ),
+            paper_bgcolor="#0D131F",
+            plot_bgcolor="#0D131F"
+        )
+        return plot(fig, output_type='div', include_plotlyjs=False)
+
+    q_df = eps_df.sort_values('Date', ascending=True).dropna(subset=['Reported EPS']).copy()
+    if sdate:
+        try:
+            s_dt = pd.to_datetime(sdate).normalize()
+            filtered_df = q_df[q_df['Date'] >= s_dt]
+            if not filtered_df.empty:
+                q_df = filtered_df
+        except Exception:
+            pass
+    if edate:
+        try:
+            e_dt = pd.to_datetime(edate).normalize()
+            filtered_df = q_df[q_df['Date'] <= e_dt]
+            if not filtered_df.empty:
+                q_df = filtered_df
+        except Exception:
+            pass
+
+    if q_df.empty:
+        q_df = eps_df.sort_values('Date', ascending=True).dropna(subset=['Reported EPS']).tail(16).copy()
+
+    med_ttm = float(q_df['TTM EPS'].dropna().median()) if not q_df['TTM EPS'].dropna().empty else None
+
+    # Customdata: [Quarter, Announcement Date, YoY Growth]
+    growth_strs = [f"{g:+.1f}%" if pd.notna(g) else "-" for g in q_df.get('YoY Growth', [np.nan]*len(q_df))]
+    cdata = np.stack((q_df['Quarter'], q_df['Announcement Date'], growth_strs), axis=-1)
+
+    fig = go.Figure()
+
+    # Trace 0: Rolling 4Q TTM EPS Histogram (Bars)
+    fig.add_trace(go.Bar(
+        x=q_df['Date'],
+        y=q_df['TTM EPS'],
+        name="Rolling 4Q TTM EPS",
+        marker=dict(
+            color='rgba(16, 185, 129, 0.75)',
+            line=dict(color='#10B981', width=1.5)
+        ),
+        customdata=cdata,
+        hovertemplate="<b>%{customdata[0]}</b> (%{customdata[1]})<br>Rolling 4Q TTM EPS: <b>₹%{y:.2f}</b><br>YoY Growth: %{customdata[2]}<extra></extra>"
+    ))
+
+    # Trace 1: Rolling 4Q TTM EPS Trendline
+    fig.add_trace(go.Scatter(
+        x=q_df['Date'],
+        y=q_df['TTM EPS'],
+        mode='lines+markers',
+        name="TTM EPS Trend",
+        line=dict(color='#34D399', width=2.5, shape='spline'),
+        marker=dict(size=6, color='#F8FAFC', line=dict(color='#059669', width=1.5)),
+        customdata=cdata,
+        hovertemplate="<b>%{customdata[0]}</b><br>Rolling 4Q TTM EPS: <b>₹%{y:.2f}</b><extra></extra>"
+    ))
+
+    # Trace 2: Quarterly Reported EPS Bars
+    fig.add_trace(go.Bar(
+        x=q_df['Date'],
+        y=q_df['Reported EPS'],
+        name="Quarterly Reported EPS",
+        marker=dict(
+            color='rgba(56, 189, 248, 0.7)',
+            line=dict(color='#38BDF8', width=1.5)
+        ),
+        customdata=cdata,
+        hovertemplate="<b>%{customdata[0]}</b> (%{customdata[1]})<br>Reported Qtr EPS: <b>₹%{y:.2f}</b><extra></extra>"
+    ))
+
+    # Trace 3: Quarterly Reported EPS Trendline
+    fig.add_trace(go.Scatter(
+        x=q_df['Date'],
+        y=q_df['Reported EPS'],
+        mode='lines+markers',
+        name="Quarterly EPS Trend",
+        line=dict(color='#38BDF8', width=2, dash='dot', shape='spline'),
+        marker=dict(size=5, color='#38BDF8'),
+        customdata=cdata,
+        hovertemplate="<b>%{customdata[0]}</b><br>Reported Qtr EPS: <b>₹%{y:.2f}</b><extra></extra>"
+    ))
+
+    # Trace 4: Historical Median Benchmark Line
+    if med_ttm is not None:
+        fig.add_trace(go.Scatter(
+            x=q_df['Date'],
+            y=[med_ttm] * len(q_df),
+            mode='lines',
+            line=dict(color='#FACC15', width=1.5, dash='dash'),
+            name=f"Historical Median (₹{med_ttm:.2f})",
+            hovertemplate=f"Historical Median TTM EPS: ₹{med_ttm:.2f}<extra></extra>"
+        ))
+
+    fig.update_layout(
+        paper_bgcolor="#0D131F",
+        plot_bgcolor="#0D131F",
+        font=dict(family="JetBrains Mono, monospace", color="#94A3B8", size=10),
+        xaxis=dict(
+            tickmode='array',
+            tickvals=q_df['Date'],
+            ticktext=q_df['Quarter'],
+            tickangle=-30,
+            showgrid=True,
+            gridcolor="rgba(255, 255, 255, 0.05)",
+            tickfont=dict(color="#94A3B8", size=9),
+            rangeslider=dict(visible=False)
+        ),
+        yaxis=dict(
+            title=dict(text="EPS (₹)", font=dict(color="#F8FAFC", size=10)),
+            showgrid=True,
+            gridcolor="rgba(255, 255, 255, 0.05)",
+            tickfont=dict(color="#94A3B8", size=9),
+            tickprefix="₹"
+        ),
+        barmode='group',
+        bargap=0.3,
+        bargroupgap=0.1,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1.0,
+            font=dict(color="#F8FAFC", size=9),
+            bgcolor="rgba(13, 19, 31, 0.7)"
+        ),
+        hoverlabel=dict(
+            bgcolor="#131B2B",
+            font_size=11,
+            font_family="JetBrains Mono",
+            bordercolor="rgba(56, 169, 246, 0.4)"
+        ),
+        margin=dict(l=55, r=25, t=35, b=35),
+        height=380
+    )
+
+    return plot(fig, output_type='div', include_plotlyjs=False)
+
+
 def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
     """
-    Renders the Quarterly YoY Growth in Rolling 4-Quarter TTM EPS chart.
-    Features:
+    Renders the Quarterly YoY Growth in Rolling 4-Quarter TTM EPS chart with:
     - Positive expansion quarters in emerald green (#10B981)
     - Contraction quarters in crimson red (#EF4444)
+    - Direct percentage text labels on each bar
     - Trendline with markers connecting quarterly points (#38BDF8)
-    - Dotted historical median growth rate benchmark line (#94A3B8)
+    - Dotted Period Median growth rate benchmark line (#94A3B8)
+    - 1-Yr Growth benchmark line (#38BDF8)
+    - 3-Yr CAGR benchmark line (#A78BFA)
+    - 5-Yr CAGR benchmark line (#F59E0B)
+    - 10-Yr CAGR benchmark line (#EC4899)
+    - 20-Yr CAGR benchmark line (#14B8A6)
+    - Interactive legend toggling (enable/disable each benchmark line with 1 click)
+    - Full absolute numbers display (Base EPS -> Latest EPS, absolute change in Rs)
+    - Executive KPI summary card bar directly above the chart.
     """
     sname = short_name(ticker_symbol)
     if eps_df is None or eps_df.empty or 'YoY Growth' not in eps_df.columns:
@@ -1056,18 +1229,95 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
         )
         return plot(fig, output_type='div', include_plotlyjs=False)
 
+    # Full sorted historical series for robust CAGR calculations across available history
+    full_eps = eps_df.dropna(subset=['TTM EPS']).sort_values('Date', ascending=True).reset_index(drop=True)
+    latest_rec = q_df.iloc[-1]
+    latest_dt = latest_rec['Date']
+    latest_ttm = float(latest_rec['TTM EPS'])
+
+    # Find position of latest visible quarter in full history
+    matches = full_eps[full_eps['Date'] == latest_dt].index
+    idx_latest = matches[0] if len(matches) > 0 else len(full_eps) - 1
+
+    # Map each date to prior year (4 quarters back) for hover tooltips with absolute numbers
+    date_to_prior = {}
+    for i in range(4, len(full_eps)):
+        c_dt = full_eps.iloc[i]['Date']
+        p_rec = full_eps.iloc[i - 4]
+        date_to_prior[c_dt] = {
+            'prior_ttm': float(p_rec['TTM EPS']),
+            'prior_qtr': p_rec['Quarter'],
+            'prior_date': p_rec['Announcement Date']
+        }
+
+    # Customdata & data labels for each bar
+    cdata = []
+    bar_texts = []
+    for _, r in q_df.iterrows():
+        p_info = date_to_prior.get(r['Date'], {})
+        p_ttm = p_info.get('prior_ttm', np.nan)
+        diff = (r['TTM EPS'] - p_ttm) if pd.notna(p_ttm) else np.nan
+        p_qtr = p_info.get('prior_qtr', 'Prior 4Q')
+        diff_str = f"{diff:+.2f}" if pd.notna(diff) else "-"
+        pttm_str = f"{p_ttm:.2f}" if pd.notna(p_ttm) else "-"
+        cdata.append([r['Quarter'], f"{r['TTM EPS']:.2f}", r['Announcement Date'], pttm_str, diff_str, p_qtr])
+        bar_texts.append(f"{r['YoY Growth']:+.1f}%")
+
+    cdata = np.array(cdata)
     bar_colors = ['#10B981' if v >= 0 else '#EF4444' for v in q_df['YoY Growth']]
     med_growth = float(q_df['YoY Growth'].median())
 
+    # Calculate 1-Yr, 3-Yr, 5-Yr, 10-Yr, 20-Yr CAGRs
+    cagr_configs = [
+        (1, 4, "1-Yr Growth", "#38BDF8", "dash"),
+        (3, 12, "3-Yr CAGR", "#A78BFA", "dashdot"),
+        (5, 20, "5-Yr CAGR", "#F59E0B", "dash"),
+        (10, 40, "10-Yr CAGR", "#EC4899", "dashdot"),
+        (20, 80, "20-Yr CAGR", "#14B8A6", "dash"),
+    ]
+
+    cagr_results = []
+    for yrs, qtrs, label, color, dash in cagr_configs:
+        idx_base = idx_latest - qtrs
+        if idx_base >= 0:
+            base_rec = full_eps.iloc[idx_base]
+            base_ttm = float(base_rec['TTM EPS'])
+            if base_ttm > 0 and latest_ttm > 0:
+                cagr_val = ((latest_ttm / base_ttm) ** (1.0 / yrs) - 1.0) * 100.0
+                diff_val = latest_ttm - base_ttm
+                cagr_results.append({
+                    'years': yrs,
+                    'quarters': qtrs,
+                    'label': label,
+                    'color': color,
+                    'dash': dash,
+                    'cagr': cagr_val,
+                    'base_ttm': base_ttm,
+                    'latest_ttm': latest_ttm,
+                    'diff': diff_val,
+                    'base_qtr': base_rec['Quarter'],
+                    'latest_qtr': latest_rec['Quarter'],
+                })
+
     fig = go.Figure()
-    # 1. Bar trace
+
+    # 1. Bar trace with direct percentage labels & rich absolute EPS tooltips
     fig.add_trace(go.Bar(
         x=q_df['Date'],
         y=q_df['YoY Growth'],
+        text=bar_texts,
+        textposition='outside',
+        textfont=dict(color="#94A3B8", size=9, family="JetBrains Mono, monospace"),
         marker=dict(color=bar_colors, line=dict(color='rgba(255, 255, 255, 0.08)', width=1)),
         name="Quarterly YoY Growth",
-        customdata=np.stack((q_df['Quarter'], q_df['TTM EPS'], q_df['Announcement Date']), axis=-1),
-        hovertemplate="<b>%{customdata[0]}</b> (%{customdata[2]})<br>YoY TTM EPS Growth: <b>%{y:.2f}%</b><br>Rolling 4Q TTM EPS: ₹%{customdata[1]:.2f}<extra></extra>"
+        customdata=cdata,
+        hovertemplate=(
+            "<b>%{customdata[0]}</b> (%{customdata[2]})<br>"
+            "YoY TTM EPS Growth: <b>%{y:+.2f}%</b><br>"
+            "Rolling 4Q TTM EPS: <b>₹%{customdata[1]}</b><br>"
+            "Prior Year TTM EPS (%{customdata[5]}): <b>₹%{customdata[3]}</b><br>"
+            "Absolute Change: <b>₹%{customdata[4]} / share</b><extra></extra>"
+        )
     ))
 
     # 2. Trendline
@@ -1081,23 +1331,34 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
         hoverinfo="skip"
     ))
 
-    # 3. Median growth reference line
+    # 3. Period Median growth reference line
     fig.add_trace(go.Scatter(
         x=q_df['Date'],
         y=[med_growth] * len(q_df),
         mode='lines',
         line=dict(color='#94A3B8', width=1.5, dash='dot'),
-        name=f"Historical Median ({med_growth:.1f}%)",
-        hovertemplate=f"Historical Median Growth: {med_growth:.1f}%<extra></extra>"
+        name=f"Period Median ({med_growth:+.1f}%)",
+        hovertemplate=f"<b>Period Median YoY Growth</b>: {med_growth:+.2f}%<br>Sample: {len(q_df)} Quarters<extra></extra>"
     ))
 
+    # 4. Multi-horizon CAGR Benchmark Lines
+    for c in cagr_results:
+        fig.add_trace(go.Scatter(
+            x=q_df['Date'],
+            y=[c['cagr']] * len(q_df),
+            mode='lines',
+            line=dict(color=c['color'], width=1.8, dash=c['dash']),
+            name=f"{c['label']} ({c['cagr']:+.1f}% | ₹{c['base_ttm']:.2f}→₹{c['latest_ttm']:.2f})",
+            hovertemplate=(
+                f"<b>{c['label']}</b>: {c['cagr']:+.2f}%<br>"
+                f"Base ({c['base_qtr']}): <b>₹{c['base_ttm']:.2f}</b><br>"
+                f"Latest ({c['latest_qtr']}): <b>₹{c['latest_ttm']:.2f}</b><br>"
+                f"Absolute Change: <b>₹{c['diff']:+.2f} / share</b><br>"
+                f"Horizon: {c['years']} Years ({c['quarters']} Quarters)<extra></extra>"
+            )
+        ))
+
     fig.update_layout(
-        title=dict(
-            text=f"Quarterly YoY Growth in Rolling 4-Quarter TTM EPS ({sname})",
-            font=dict(color="#F8FAFC", size=13),
-            x=0.01,
-            y=0.98
-        ),
         paper_bgcolor="#0D131F",
         plot_bgcolor="#090D15",
         font=dict(color="#F8FAFC", family="Plus Jakarta Sans, sans-serif"),
@@ -1108,10 +1369,13 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
             y=1.02,
             xanchor="right",
             x=1,
-            font=dict(color="#94A3B8", size=10, family="JetBrains Mono, monospace")
+            font=dict(color="#94A3B8", size=9.5, family="JetBrains Mono, monospace"),
+            bgcolor="rgba(13, 19, 31, 0.8)",
+            bordercolor="rgba(255, 255, 255, 0.08)",
+            borderwidth=1
         ),
-        margin=dict(l=35, r=40, t=65, b=35),
-        height=380,
+        margin=dict(l=45, r=40, t=40, b=35),
+        height=420,
         hovermode="x unified"
     )
     fig.update_xaxes(
@@ -1129,7 +1393,44 @@ def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None):
         tickfont=dict(color="#38BDF8", size=10, family="JetBrains Mono, monospace")
     )
 
-    return plot(fig, output_type='div', include_plotlyjs=False)
+    plot_html = plot(fig, output_type='div', include_plotlyjs=False)
+
+    # Build sleek Executive KPI Summary Strip with Absolute Numbers
+    kpi_cards_html = []
+
+    # 1. Period Median KPI Card
+    kpi_cards_html.append(f'''
+      <div class="ia-cagr-chip" onclick="iaToggleCagrLine('Period Median', this)" style="flex: 1 1 140px; min-width: 140px; background: #090D15; border: 1px solid rgba(148, 163, 184, 0.2); border-left: 3px solid #94A3B8; border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.2s ease;">
+        <div style="font-size: 0.6875rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Period Median</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #F8FAFC; font-family: 'JetBrains Mono', monospace;">{med_growth:+.1f}%</div>
+        <div style="font-size: 0.6875rem; color: #64748B; margin-top: 2px;">{len(q_df)} Quarters Sample</div>
+      </div>
+    ''')
+
+    # CAGR KPI Cards
+    for c in cagr_results:
+        diff_sign = "+" if c['diff'] >= 0 else ""
+        cagr_color = "#10B981" if c['cagr'] >= 0 else "#EF4444"
+        kpi_cards_html.append(f'''
+          <div class="ia-cagr-chip" onclick="iaToggleCagrLine('{c['label']}', this)" style="flex: 1 1 150px; min-width: 150px; background: #090D15; border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid {c['color']}; border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.2s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+              <span style="font-size: 0.6875rem; font-weight: 700; color: {c['color']}; text-transform: uppercase; letter-spacing: 0.05em;">{c['label']}</span>
+              <span style="font-size: 0.65rem; color: #64748B;">{c['base_qtr']}→{c['latest_qtr']}</span>
+            </div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: {cagr_color}; font-family: 'JetBrains Mono', monospace;">{c['cagr']:+.1f}%</div>
+            <div style="font-size: 0.6875rem; color: #94A3B8; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">
+              ₹{c['base_ttm']:.2f} → ₹{c['latest_ttm']:.2f} <span style="color: {'#34D399' if c['diff']>=0 else '#F87171'}; font-weight: 600;">({diff_sign}₹{c['diff']:.2f})</span>
+            </div>
+          </div>
+        ''')
+
+    summary_bar = f'''
+    <div style="padding: 12px 16px; background: #0D131F; border-bottom: 1px solid rgba(30, 41, 59, 0.7); display: flex; flex-wrap: wrap; gap: 10px;">
+      {''.join(kpi_cards_html)}
+    </div>
+    '''
+
+    return summary_bar + plot_html
 
 
 # ---------------------------------------------------------------------------
