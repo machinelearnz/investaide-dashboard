@@ -137,12 +137,16 @@
           {% csrf_token %}
           
           <div class="form-row">
-            <div class="form-group col-md-6 mb-3">
+            <div class="form-group col-md-4 mb-3">
               {{ bsp_sel_form.benchmark|as_crispy_field }}
             </div>
-            <div class="form-group col-md-6 mb-3 position-relative" id="stock-search-group">
+            <div class="form-group col-md-4 mb-3 position-relative" id="stock-search-group">
               {{ bsp_sel_form.stock_index|as_crispy_field }}
               <div id="stock_autocomplete_dropdown" class="autocomplete-dropdown shadow-lg" style="display:none;"></div>
+            </div>
+            <div class="form-group col-md-4 mb-3 position-relative" id="sec-stock-search-group">
+              {{ bsp_sel_form.secondary_stock|as_crispy_field }}
+              <div id="sec_stock_autocomplete_dropdown" class="autocomplete-dropdown shadow-lg" style="display:none;"></div>
             </div>
           </div>
 
@@ -197,6 +201,14 @@
   </div>
   {% endif %}
 
+  {% if tbl_div_expectations2 %}
+  <div class="col-lg-12">
+    {% autoescape off %}
+    {{ tbl_div_expectations2 }}
+    {% endautoescape %}
+  </div>
+  {% endif %}
+
   <div class="col-lg-12">
     <div class="card">
       <div class="card-header">
@@ -232,16 +244,16 @@
     <div class="card">
       <div class="card-header d-flex flex-wrap align-items-center justify-content-between" style="gap: 12px;">
         <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
-          Trailing (TTM) &amp; Absolute Quarterly EPS Trajectory
+          Trailing (TTM) &amp; Absolute Quarterly EPS Trajectory {% if primary_name %}({{ primary_name }}){% endif %}
         </h4>
         <div id="eps-tabs-group" style="display: inline-flex; border-radius: 8px; background: #090D15; padding: 3px; border: 1px solid rgba(255, 255, 255, 0.08);">
-          <button type="button" class="btn-eps-tab active" data-eps-view="both" onclick="iaSwitchEpsView(this, 'both')">
+          <button type="button" class="btn-eps-tab active" data-eps-view="both" onclick="iaSwitchEpsView(this, 'both', 'ia-ttm-eps-chart-container')">
             <i class="fas fa-layer-group"></i> Both (TTM &amp; Quarterly)
           </button>
-          <button type="button" class="btn-eps-tab" data-eps-view="ttm" onclick="iaSwitchEpsView(this, 'ttm')">
+          <button type="button" class="btn-eps-tab" data-eps-view="ttm" onclick="iaSwitchEpsView(this, 'ttm', 'ia-ttm-eps-chart-container')">
             <i class="fas fa-chart-bar"></i> TTM EPS (Histogram &amp; Trend)
           </button>
-          <button type="button" class="btn-eps-tab" data-eps-view="qtr" onclick="iaSwitchEpsView(this, 'qtr')">
+          <button type="button" class="btn-eps-tab" data-eps-view="qtr" onclick="iaSwitchEpsView(this, 'qtr', 'ia-ttm-eps-chart-container')">
             <i class="fas fa-chart-line"></i> Absolute Quarterly EPS
           </button>
         </div>
@@ -249,6 +261,34 @@
       <div class="card-body p-0" id="ia-ttm-eps-chart-container">
         {% autoescape off %}
         {{ plot_div_ttm_eps }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if plot_div_ttm_eps2 %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header d-flex flex-wrap align-items-center justify-content-between" style="gap: 12px;">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Trailing (TTM) &amp; Absolute Quarterly EPS Trajectory {% if secondary_name %}({{ secondary_name }}){% endif %}
+        </h4>
+        <div id="eps-tabs-group2" style="display: inline-flex; border-radius: 8px; background: #090D15; padding: 3px; border: 1px solid rgba(255, 255, 255, 0.08);">
+          <button type="button" class="btn-eps-tab active" data-eps-view="both" onclick="iaSwitchEpsView(this, 'both', 'ia-ttm-eps-chart-container2')">
+            <i class="fas fa-layer-group"></i> Both (TTM &amp; Quarterly)
+          </button>
+          <button type="button" class="btn-eps-tab" data-eps-view="ttm" onclick="iaSwitchEpsView(this, 'ttm', 'ia-ttm-eps-chart-container2')">
+            <i class="fas fa-chart-bar"></i> TTM EPS (Histogram &amp; Trend)
+          </button>
+          <button type="button" class="btn-eps-tab" data-eps-view="qtr" onclick="iaSwitchEpsView(this, 'qtr', 'ia-ttm-eps-chart-container2')">
+            <i class="fas fa-chart-line"></i> Absolute Quarterly EPS
+          </button>
+        </div>
+      </div>
+      <div class="card-body p-0" id="ia-ttm-eps-chart-container2">
+        {% autoescape off %}
+        {{ plot_div_ttm_eps2 }}
         {% endautoescape %}
       </div>
     </div>
@@ -277,7 +317,7 @@
     <div class="card">
       <div class="card-header">
         <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
-          Quarterly & Trailing (TTM) EPS Ledger
+          Quarterly & Trailing (TTM) EPS Ledger {% if primary_name %}({{ primary_name }}){% endif %}
         </h4>
       </div>
       <div class="card-body p-0">
@@ -289,12 +329,29 @@
   </div>
   {% endif %}
 
+  {% if tbl_div_eps2 %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Quarterly & Trailing (TTM) EPS Ledger {% if secondary_name %}({{ secondary_name }}){% endif %}
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ tbl_div_eps2 }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if plot_div_financial_trends %}
   <div class="col-lg-12">
     <div class="card">
       <div class="card-header">
         <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
-          Annual Financial Trajectory (Revenues, Profits, Debt & Cash Flow)
+          Annual Financial Trajectory {% if primary_name %}({{ primary_name }}){% endif %}
         </h4>
       </div>
       <div class="card-body p-0">
@@ -313,16 +370,58 @@
     {% endautoescape %}
   </div>
   {% endif %}
+
+  {% if plot_div_financial_trends2 %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Annual Financial Trajectory {% if secondary_name %}({{ secondary_name }}){% endif %}
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_financial_trends2 }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if tbl_div_financials2 %}
+  <div class="col-lg-12">
+    {% autoescape off %}
+    {{ tbl_div_financials2 }}
+    {% endautoescape %}
+  </div>
+  {% endif %}
 </div>
 
 <!-- Secondary Analytical Breakdowns -->
 <div class="row">
   <div class="col-lg-12">
     <div class="card">
-      <div class="card-header">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
         <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
           Normalized Movement (Rebased to 100)
         </h4>
+        <div class="pe-ceiling-toolbar d-flex align-items-center" style="gap: 8px;">
+          <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TTM P/E Cap:</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-50" onclick="iaApplyPeCap(this, 50)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">50x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-100" onclick="iaApplyPeCap(this, 100)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">100x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-150 active" onclick="iaApplyPeCap(this, 150)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #A855F7; color: #A855F7; font-weight: 700;">150x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-auto" onclick="iaApplyPeCap(this, 'auto')" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">Auto</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; background: #090D15; border: 1px solid #334155; border-radius: 4px; padding: 2px 6px;">
+            <span style="font-size: 0.7rem; color: #64748B;">Max:</span>
+            <input type="number" min="10" max="5000" step="10" value="150" class="pe-custom-input" onchange="iaOnPeCustomChange(this)" onkeyup="if(event.key==='Enter') iaOnPeCustomChange(this)" style="width: 52px; background: transparent; border: none; color: #E2E8F0; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; text-align: right; outline: none; padding: 0;" title="Enter custom P/E ceiling (e.g. 80, 100, 200)">
+            <span style="font-size: 0.7rem; color: #94A3B8;">x</span>
+          </div>
+          <label class="d-flex align-items-center mb-0 ml-1" style="font-size: 0.7rem; color: #64748B; cursor: pointer;" title="Apply this P/E ceiling to all valuation charts simultaneously">
+            <input type="checkbox" class="pe-sync-all mr-1" checked style="cursor: pointer; accent-color: #A855F7;"> Sync charts
+          </label>
+        </div>
       </div>
       <div class="card-body p-0">
         {% autoescape off %}
@@ -334,10 +433,27 @@
 
   <div class="col-lg-12">
     <div class="card">
-      <div class="card-header">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
         <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
-          Asset Absolute Price Trajectory
+          Asset Absolute Price Trajectory {% if primary_name %}({{ primary_name }}){% endif %}
         </h4>
+        <div class="pe-ceiling-toolbar d-flex align-items-center" style="gap: 8px;">
+          <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TTM P/E Cap:</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-50" onclick="iaApplyPeCap(this, 50)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">50x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-100" onclick="iaApplyPeCap(this, 100)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">100x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-150 active" onclick="iaApplyPeCap(this, 150)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #A855F7; color: #A855F7; font-weight: 700;">150x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-auto" onclick="iaApplyPeCap(this, 'auto')" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">Auto</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; background: #090D15; border: 1px solid #334155; border-radius: 4px; padding: 2px 6px;">
+            <span style="font-size: 0.7rem; color: #64748B;">Max:</span>
+            <input type="number" min="10" max="5000" step="10" value="150" class="pe-custom-input" onchange="iaOnPeCustomChange(this)" onkeyup="if(event.key==='Enter') iaOnPeCustomChange(this)" style="width: 52px; background: transparent; border: none; color: #E2E8F0; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; text-align: right; outline: none; padding: 0;" title="Enter custom P/E ceiling (e.g. 80, 100, 200)">
+            <span style="font-size: 0.7rem; color: #94A3B8;">x</span>
+          </div>
+          <label class="d-flex align-items-center mb-0 ml-1" style="font-size: 0.7rem; color: #64748B; cursor: pointer;" title="Apply this P/E ceiling to all valuation charts simultaneously">
+            <input type="checkbox" class="pe-sync-all mr-1" checked style="cursor: pointer; accent-color: #A855F7;"> Sync charts
+          </label>
+        </div>
       </div>
       <div class="card-body p-0">
         {% autoescape off %}
@@ -346,6 +462,40 @@
       </div>
     </div>
   </div>
+
+  {% if plot_div_stock2 %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Asset Absolute Price Trajectory {% if secondary_name %}({{ secondary_name }}){% endif %}
+        </h4>
+        <div class="pe-ceiling-toolbar d-flex align-items-center" style="gap: 8px;">
+          <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">TTM P/E Cap:</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-50" onclick="iaApplyPeCap(this, 50)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">50x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-100" onclick="iaApplyPeCap(this, 100)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">100x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-150 active" onclick="iaApplyPeCap(this, 150)" style="padding: 2px 8px; font-size: 0.72rem; border-color: #A855F7; color: #A855F7; font-weight: 700;">150x</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary pe-cap-btn pe-cap-auto" onclick="iaApplyPeCap(this, 'auto')" style="padding: 2px 8px; font-size: 0.72rem; border-color: #334155; color: #94A3B8;">Auto</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; background: #090D15; border: 1px solid #334155; border-radius: 4px; padding: 2px 6px;">
+            <span style="font-size: 0.7rem; color: #64748B;">Max:</span>
+            <input type="number" min="10" max="5000" step="10" value="150" class="pe-custom-input" onchange="iaOnPeCustomChange(this)" onkeyup="if(event.key==='Enter') iaOnPeCustomChange(this)" style="width: 52px; background: transparent; border: none; color: #E2E8F0; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; text-align: right; outline: none; padding: 0;" title="Enter custom P/E ceiling (e.g. 80, 100, 200)">
+            <span style="font-size: 0.7rem; color: #94A3B8;">x</span>
+          </div>
+          <label class="d-flex align-items-center mb-0 ml-1" style="font-size: 0.7rem; color: #64748B; cursor: pointer;" title="Apply this P/E ceiling to all valuation charts simultaneously">
+            <input type="checkbox" class="pe-sync-all mr-1" checked style="cursor: pointer; accent-color: #A855F7;"> Sync charts
+          </label>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_stock2 }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="col-lg-12">
     <div class="card">
@@ -367,23 +517,112 @@
 
 {% block javascripts %}
 <script>
-function iaSwitchEpsView(btn, mode) {
-  if (!btn) return;
-  document.querySelectorAll('#eps-tabs-group .btn-eps-tab').forEach(function(b) {
-    b.classList.remove('active');
+// --- Dynamic TTM P/E Axis Ceiling Controller ---
+function iaFindPeAxisKey(plotEl) {
+  if (!plotEl) return null;
+  const layout = plotEl._fullLayout || plotEl.layout;
+  if (!layout) return null;
+  for (const key in layout) {
+    if (key === 'yaxis' || key.startsWith('yaxis')) {
+      const y = layout[key];
+      const titleText = (y && y.title && (typeof y.title === 'string' ? y.title : y.title.text)) || '';
+      if (titleText.toLowerCase().includes('ttm p/e') || titleText.toLowerCase().includes('p/e')) {
+        return key;
+      }
+    }
+  }
+  for (const key in layout) {
+    if (key === 'yaxis' || key.startsWith('yaxis')) {
+      const y = layout[key];
+      if (y && y.anchor === 'x2' && (!y.overlaying || y.side !== 'right')) {
+        return key;
+      }
+    }
+  }
+  return null;
+}
+
+function iaApplyPeCap(triggerEl, capVal, syncAll) {
+  if (!triggerEl) return;
+  const card = triggerEl.closest('.card');
+  const toolbar = triggerEl.closest('.pe-ceiling-toolbar');
+  const syncCheck = toolbar ? toolbar.querySelector('.pe-sync-all') : null;
+  const shouldSync = (syncAll !== undefined) ? syncAll : (syncCheck ? syncCheck.checked : true);
+
+  const targetCards = shouldSync ? document.querySelectorAll('.card') : [card];
+
+  targetCards.forEach(function(c) {
+    const plotEl = c.querySelector('.plotly-graph-div');
+    if (!plotEl || !plotEl._fullLayout) return;
+    const axisKey = iaFindPeAxisKey(plotEl);
+    if (!axisKey) return;
+
+    const update = {};
+    if (capVal === 'auto' || capVal === null || isNaN(capVal) || capVal <= 0) {
+      update[axisKey + '.autorange'] = true;
+    } else {
+      update[axisKey + '.autorange'] = false;
+      update[axisKey + '.range'] = [0, parseFloat(capVal)];
+    }
+    Plotly.relayout(plotEl, update);
+
+    const cToolbar = c.querySelector('.pe-ceiling-toolbar');
+    if (cToolbar) {
+      cToolbar.querySelectorAll('.pe-cap-btn').forEach(function(b) {
+        b.classList.remove('active');
+        b.style.borderColor = '#334155';
+        b.style.color = '#94A3B8';
+        b.style.fontWeight = 'normal';
+      });
+      const customInput = cToolbar.querySelector('.pe-custom-input');
+      if (capVal === 'auto') {
+        const autoBtn = cToolbar.querySelector('.pe-cap-auto');
+        if (autoBtn) {
+          autoBtn.classList.add('active');
+          autoBtn.style.borderColor = '#A855F7';
+          autoBtn.style.color = '#A855F7';
+          autoBtn.style.fontWeight = '700';
+        }
+        if (customInput) customInput.value = '';
+      } else {
+        const matchedBtn = cToolbar.querySelector('.pe-cap-' + capVal);
+        if (matchedBtn) {
+          matchedBtn.classList.add('active');
+          matchedBtn.style.borderColor = '#A855F7';
+          matchedBtn.style.color = '#A855F7';
+          matchedBtn.style.fontWeight = '700';
+        }
+        if (customInput) customInput.value = capVal;
+      }
+    }
   });
+}
+
+function iaOnPeCustomChange(inputEl) {
+  if (!inputEl) return;
+  const val = parseFloat(inputEl.value);
+  if (isNaN(val) || val <= 0) {
+    iaApplyPeCap(inputEl, 'auto');
+  } else {
+    iaApplyPeCap(inputEl, val);
+  }
+}
+
+function iaSwitchEpsView(btn, mode, containerId) {
+  if (!btn) return;
+  const group = btn.closest('#eps-tabs-group') || btn.closest('#eps-tabs-group2') || btn.parentElement;
+  if (group) {
+    group.querySelectorAll('.btn-eps-tab').forEach(function(b) {
+      b.classList.remove('active');
+    });
+  }
   btn.classList.add('active');
 
-  const plotEl = document.querySelector('#ia-ttm-eps-chart-container .plotly-graph-div');
+  const containerSelector = containerId ? '#' + containerId : '#ia-ttm-eps-chart-container';
+  const plotEl = document.querySelector(containerSelector + ' .plotly-graph-div');
   if (!plotEl || !plotEl.data || typeof Plotly === 'undefined') return;
 
   const totalTraces = plotEl.data.length;
-  // Traces in ia_go_ttm_eps_chart:
-  // Trace 0: Rolling 4Q TTM EPS (Bar)
-  // Trace 1: Rolling 4Q TTM EPS Trend (Line)
-  // Trace 2: Quarterly Reported EPS (Bar)
-  // Trace 3: Quarterly Reported EPS Trend (Line)
-  // Trace 4 (optional): Historical Median Benchmark (Line)
   if (mode === 'both') {
     Plotly.restyle(plotEl, {visible: true});
   } else if (mode === 'ttm') {
@@ -430,117 +669,140 @@ function iaToggleCagrLine(labelPrefix, cardEl) {
 }
 
 $(document).ready(function() {
-  const $input = $('#id_stock_index');
-  const $dropdown = $('#stock_autocomplete_dropdown');
-  let currentFocus = -1;
-  let debounceTimer = null;
+  function setupStockAutocomplete(inputSelector, dropdownSelector, groupSelector) {
+    const $input = $(inputSelector);
+    const $dropdown = $(dropdownSelector);
+    let currentFocus = -1;
+    let debounceTimer = null;
 
-  function hideDropdown() {
-    $dropdown.hide().empty();
-    currentFocus = -1;
-  }
+    if (!$input.length) return;
 
-  function renderResults(results) {
-    $dropdown.empty();
-    if (!results || results.length === 0) {
-      $dropdown.html('<div class="autocomplete-loading"><i class="fas fa-search mr-1"></i> No matching securities found. You can still type an exact ticker code.</div>').show();
-      return;
+    function hideDropdown() {
+      $dropdown.hide().empty();
+      currentFocus = -1;
     }
 
-    results.forEach(function(item) {
-      const $row = $(`
-        <div class="autocomplete-item d-flex justify-content-between align-items-center" data-symbol="${item.symbol}">
-          <div class="d-flex align-items-center" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <span class="autocomplete-badge">${item.symbol}</span>
-            <span class="autocomplete-name text-truncate">${item.name}</span>
-          </div>
-          <span class="autocomplete-exch ml-2">${item.exch || ''}</span>
-        </div>
-      `);
+    function renderResults(results) {
+      $dropdown.empty();
+      if (!results || results.length === 0) {
+        $dropdown.html('<div class="autocomplete-loading"><i class="fas fa-search mr-1"></i> No matching securities found. You can still type an exact ticker code.</div>').show();
+        return;
+      }
 
-      $row.on('mousedown', function(e) {
-        e.preventDefault(); // prevent input blur before value is set
-        $input.val(item.symbol);
-        hideDropdown();
+      results.forEach(function(item) {
+        const $row = $(`
+          <div class="autocomplete-item d-flex justify-content-between align-items-center" data-symbol="${item.symbol}">
+            <div class="d-flex align-items-center" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span class="autocomplete-badge">${item.symbol}</span>
+              <span class="autocomplete-name text-truncate">${item.name}</span>
+            </div>
+            <span class="autocomplete-exch ml-2">${item.exch || ''}</span>
+          </div>
+        `);
+
+        $row.on('mousedown', function(e) {
+          e.preventDefault();
+          $input.val(item.symbol);
+          hideDropdown();
+        });
+
+        $dropdown.append($row);
       });
 
-      $dropdown.append($row);
+      $dropdown.show();
+      currentFocus = -1;
+    }
+
+    $input.on('input', function() {
+      const query = $(this).val().trim();
+      clearTimeout(debounceTimer);
+
+      if (query.length < 1) {
+        hideDropdown();
+        return;
+      }
+
+      if (query.length >= 2) {
+        $dropdown.html('<div class="autocomplete-loading"><i class="fas fa-spinner fa-spin mr-1"></i> Searching securities...</div>').show();
+      }
+
+      debounceTimer = setTimeout(function() {
+        $.ajax({
+          url: '{% url "ticker_search" %}',
+          data: { q: query },
+          dataType: 'json',
+          success: function(data) {
+            renderResults(data.results);
+          },
+          error: function() {
+            hideDropdown();
+          }
+        });
+      }, 200);
     });
 
-    $dropdown.show();
-    currentFocus = -1;
-  }
+    // Keyboard navigation
+    $input.on('keydown', function(e) {
+      const items = $dropdown.find('.autocomplete-item');
+      if (!items.length) return;
 
-  $input.on('input', function() {
-    const query = $(this).val().trim();
-    clearTimeout(debounceTimer);
-
-    if (query.length < 1) {
-      hideDropdown();
-      return;
-    }
-
-    if (query.length >= 2) {
-      $dropdown.html('<div class="autocomplete-loading"><i class="fas fa-spinner fa-spin mr-1"></i> Searching securities...</div>').show();
-    }
-
-    debounceTimer = setTimeout(function() {
-      $.ajax({
-        url: '{% url "ticker_search" %}',
-        data: { q: query },
-        dataType: 'json',
-        success: function(data) {
-          renderResults(data.results);
-        },
-        error: function() {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        currentFocus++;
+        if (currentFocus >= items.length) currentFocus = 0;
+        setActive(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        currentFocus--;
+        if (currentFocus < 0) currentFocus = items.length - 1;
+        setActive(items);
+      } else if (e.key === 'Enter') {
+        if (currentFocus > -1 && items.eq(currentFocus).length) {
+          e.preventDefault();
+          const sym = items.eq(currentFocus).data('symbol');
+          $input.val(sym);
           hideDropdown();
         }
-      });
-    }, 200);
-  });
-
-  // Keyboard navigation
-  $input.on('keydown', function(e) {
-    const items = $dropdown.find('.autocomplete-item');
-    if (!items.length) return;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      currentFocus++;
-      if (currentFocus >= items.length) currentFocus = 0;
-      setActive(items);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      currentFocus--;
-      if (currentFocus < 0) currentFocus = items.length - 1;
-      setActive(items);
-    } else if (e.key === 'Enter') {
-      if (currentFocus > -1 && items.eq(currentFocus).length) {
-        e.preventDefault();
-        const sym = items.eq(currentFocus).data('symbol');
-        $input.val(sym);
+      } else if (e.key === 'Escape') {
         hideDropdown();
       }
-    } else if (e.key === 'Escape') {
-      hideDropdown();
-    }
-  });
+    });
 
-  function setActive(items) {
-    items.removeClass('active');
-    if (currentFocus > -1 && currentFocus < items.length) {
-      const activeItem = items.eq(currentFocus);
-      activeItem.addClass('active');
-      activeItem[0].scrollIntoView({ block: 'nearest' });
+    function setActive(items) {
+      items.removeClass('active');
+      if (currentFocus > -1 && currentFocus < items.length) {
+        const activeItem = items.eq(currentFocus);
+        activeItem.addClass('active');
+        activeItem[0].scrollIntoView({ block: 'nearest' });
+      }
     }
+
+    $(document).on('click', function(e) {
+      if (!$(e.target).closest(groupSelector).length) {
+        hideDropdown();
+      }
+    });
   }
 
-  // Close when clicking outside
-  $(document).on('click', function(e) {
-    if (!$(e.target).closest('#stock-search-group').length) {
-      hideDropdown();
-    }
-  });
+  setupStockAutocomplete('#id_stock_index', '#stock_autocomplete_dropdown', '#stock-search-group');
+  setupStockAutocomplete('#id_secondary_stock', '#sec_stock_autocomplete_dropdown', '#sec-stock-search-group');
+
+  // Auto-hide PE ceiling toolbars if chart has no PE axis
+  setTimeout(function() {
+    document.querySelectorAll('.pe-ceiling-toolbar').forEach(function(tb) {
+      const card = tb.closest('.card');
+      const plotEl = card ? card.querySelector('.plotly-graph-div') : null;
+      if (!plotEl) {
+        tb.style.display = 'none';
+        return;
+      }
+      const axisKey = iaFindPeAxisKey(plotEl);
+      if (!axisKey) {
+        tb.style.display = 'none';
+      }
+    });
+  }, 400);
+
 });
 </script>
 {% endblock javascripts %}

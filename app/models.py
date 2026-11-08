@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 class c_entry_model2(models.Model):
     benchmark = models.CharField(max_length=200)
     stock_index = models.CharField(max_length=200)
+    secondary_stock = models.CharField(max_length=200, default='NA', blank=True, null=True)
     sdate = models.DateField()
     edate = models.DateField()
     yaxis_type = models.CharField(max_length=20)

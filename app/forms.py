@@ -27,6 +27,16 @@ class ceform_scale(forms.ModelForm):
             'id': 'id_stock_index'
         })
     )
+    secondary_stock = forms.CharField(
+        initial="NA",
+        required=False,
+        label='Secondary Stock / Security (Search or Type Ticker)',
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Optional: NA (default) or ticker / company name...',
+            'autocomplete': 'off',
+            'id': 'id_secondary_stock'
+        })
+    )
     yaxis_type = forms.ChoiceField(initial=ia_stat.def_yaxis, label='Y-axis Scale', choices=ia_stat.yaxis_type)
     cycle_type = forms.ChoiceField(initial=ia_stat.def_cycle_type, label='Cycle Breakdown', choices=ia_stat.cycle_types)
 
@@ -52,9 +62,29 @@ class ceform_scale(forms.ModelForm):
                     si = f"{si}.NS"
         return si
 
+    def clean_secondary_stock(self):
+        si = self.cleaned_data.get('secondary_stock', '').strip()
+        if not si or si.upper() in ("NA", "N/A", "NONE", "-", "NULL"):
+            return "NA"
+        if " - " in si:
+            si = si.split(" - ")[0].strip()
+        elif " (" in si and si.endswith(")"):
+            si = si.split(" (")[0].strip()
+        elif " [" in si and si.endswith("]"):
+            si = si.split(" [")[0].strip()
+        si = si.split()[0].strip().upper()
+        if not si.startswith("^") and "." not in si:
+            if f"{si}.NS" in ia_stat.stock_name_code_map:
+                si = f"{si}.NS"
+            else:
+                us_tech = {"AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "NVDA", "META", "TSLA", "NFLX", "INTC", "AMD"}
+                if si not in us_tech:
+                    si = f"{si}.NS"
+        return si
+
     class Meta:
         model = c_entry_model2
-        fields = ["benchmark", "stock_index", "sdate", "edate", "yaxis_type", "cycle_type"]
+        fields = ["benchmark", "stock_index", "secondary_stock", "sdate", "edate", "yaxis_type", "cycle_type"]
 
 
 class coffee_can_form(forms.ModelForm):

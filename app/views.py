@@ -130,17 +130,28 @@ def index(request):
     plot_div_stock = ""
     plot_div_ben = ""
 
+    # Secondary security variables
+    plot_div_stock2 = ""
+    plot_div_ttm_eps2 = ""
+    tbl_div_eps2 = ""
+    tbl_div_financials2 = ""
+    tbl_div_expectations2 = ""
+    plot_div_financial_trends2 = ""
+    si2_name = ""
+    has_secondary = False
+
     form = ceform_scale(request.POST or None)
     message = "Please Enter field details"
     msg2 = ""
     print("%%%%", "Here1")
-    html_template = loader.get_template( 'index.html' )
+    html_template = loader.get_template('index.html')
     if form.is_valid():
         d1 = form.cleaned_data
-        print("######",d1)
+        print("######", d1)
         print("%%%%", "Here2")
         ben = d1['benchmark']
         si = d1['stock_index']
+        si2 = d1.get('secondary_stock', 'NA')
         sdate = d1['sdate']
         edate = d1['edate']
         yaxis_type = d1['yaxis_type']
@@ -158,7 +169,7 @@ def index(request):
         }
         cycle_name = cycle_label_map.get(cycle_type, "market cycles")
         
-        # Safe resolution of company names (prevent KeyError on custom tickers)
+        # Safe resolution of company names
         ben_name = ia_sinfo.stock_name_code_map.get(ben, [None, None, ben])[2]
         si_name = ia_sinfo.stock_name_code_map.get(si, [None, None, None])[2]
         if not si_name:
@@ -176,29 +187,89 @@ def index(request):
             except Exception:
                 si_name = si
 
-        message = f"Compare : {ben_name} vs. {si_name} across {cycle_name}"
+        has_secondary = bool(si2 and str(si2).strip().upper() not in ["", "NA", "NONE"])
+        if has_secondary:
+            si2_name = ia_sinfo.stock_name_code_map.get(si2, [None, None, None])[2]
+            if not si2_name:
+                try:
+                    import yfinance as yf
+                    _sess = None
+                    try:
+                        from curl_cffi import requests as cffi_req
+                        _sess = cffi_req.Session(impersonate="chrome")
+                    except Exception:
+                        pass
+                    _t2 = yf.Ticker(si2, session=_sess) if _sess else yf.Ticker(si2)
+                    _inf2 = _t2.info or {}
+                    si2_name = _inf2.get('shortName') or _inf2.get('longName') or si2
+                except Exception:
+                    si2_name = si2
 
-        plot_div_reset, tbl_div_reset_beta, tbl_div_eps, plot_div_eps_growth, plot_div_ttm_eps, plot_div_norm, plot_div_stock, plot_div_ben, msg2 = ia_stockcharts.ia_plot_prices([ben, si], sdate, edate, yaxis_type, cycle_type=cycle_type)
+            message = f"Compare : {ben_name} vs. {si_name} vs. {si2_name} across {cycle_name}"
+            stock_input_list = [ben, si, si2]
+        else:
+            message = f"Compare : {ben_name} vs. {si_name} across {cycle_name}"
+            stock_input_list = [ben, si]
+
+        (plot_div_reset, tbl_div_reset_beta, tbl_div_eps,
+         plot_div_eps_growth, plot_div_ttm_eps, plot_div_norm,
+         plot_div_stock, plot_div_ben, msg2,
+         plot_div_stock2, plot_div_ttm_eps2, tbl_div_eps2) = ia_stockcharts.ia_plot_prices(
+            stock_input_list, sdate, edate, yaxis_type, cycle_type=cycle_type
+        )
         
         # Check if ticker price fetching failed
         if msg2 and "Unable to fetch price data" in str(msg2):
             message = f"⚠️ Could not retrieve price history for ticker '{si}'. Please check symbol spelling or select from search suggestions."
 
+        # Primary security individual cards & widgets
         plot_div_financial_trends = ia_stockcharts.ia_go_annual_financial_trends_chart(si, sname=si_name)
         tbl_div_financials = ia_stockcharts.ia_get_company_financials_widget(si, sname=si_name)
         tbl_div_expectations = ia_stockcharts.ia_get_security_expectations_widget(si, sname=si_name)
+
+        # Secondary security individual cards & widgets (if requested)
+        if has_secondary:
+            plot_div_financial_trends2 = ia_stockcharts.ia_go_annual_financial_trends_chart(si2, sname=si2_name)
+            tbl_div_financials2 = ia_stockcharts.ia_get_company_financials_widget(si2, sname=si2_name)
+            tbl_div_expectations2 = ia_stockcharts.ia_get_security_expectations_widget(si2, sname=si2_name)
 
     else:
         print("%%%%", "Here3")
         print("invalid")
         print(form.errors)
 
-    context = {'bsp_sel_form': form, 'msg': message, 'msg2': msg2, 'plot_div_reset': plot_div_reset, 'tbl_div_reset_beta': tbl_div_reset_beta, 'tbl_div_eps': tbl_div_eps, 'plot_div_financial_trends': plot_div_financial_trends, 'tbl_div_financials': tbl_div_financials, 'tbl_div_expectations': tbl_div_expectations, 'plot_div_eps_growth': plot_div_eps_growth, 'plot_div_ttm_eps': plot_div_ttm_eps, 'plot_div_norm': plot_div_norm, 'plot_div_stock': plot_div_stock, 'plot_div_ben': plot_div_ben}
+    context = {
+        'bsp_sel_form': form,
+        'msg': message,
+        'msg2': msg2,
+        'plot_div_reset': plot_div_reset,
+        'tbl_div_reset_beta': tbl_div_reset_beta,
+        'tbl_div_eps': tbl_div_eps,
+        'plot_div_financial_trends': plot_div_financial_trends,
+        'tbl_div_financials': tbl_div_financials,
+        'tbl_div_expectations': tbl_div_expectations,
+        'plot_div_eps_growth': plot_div_eps_growth,
+        'plot_div_ttm_eps': plot_div_ttm_eps,
+        'plot_div_norm': plot_div_norm,
+        'plot_div_stock': plot_div_stock,
+        'plot_div_ben': plot_div_ben,
+        # Secondary context variables
+        'has_secondary': has_secondary,
+        'primary_name': si_name if 'si_name' in locals() else "",
+        'secondary_name': si2_name,
+        'plot_div_stock2': plot_div_stock2,
+        'plot_div_ttm_eps2': plot_div_ttm_eps2,
+        'tbl_div_eps2': tbl_div_eps2,
+        'tbl_div_financials2': tbl_div_financials2,
+        'tbl_div_expectations2': tbl_div_expectations2,
+        'plot_div_financial_trends2': plot_div_financial_trends2,
+    }
     context['segment'] = 'index'
     print("%%%%", "Here4")
     resp = render(request, "index.html", context)
     gc.collect()
     return resp
+
 
 def ccan(request):
 
