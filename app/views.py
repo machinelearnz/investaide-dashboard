@@ -125,6 +125,7 @@ def index(request):
     tbl_div_expectations = ""
     plot_div_financial_trends = ""
     plot_div_eps_growth = ""
+    plot_div_norm_eps = ""
     plot_div_ttm_eps = ""
     plot_div_norm = ""
     plot_div_stock = ""
@@ -214,7 +215,8 @@ def index(request):
         (plot_div_reset, tbl_div_reset_beta, tbl_div_eps,
          plot_div_eps_growth, plot_div_ttm_eps, plot_div_norm,
          plot_div_stock, plot_div_ben, msg2,
-         plot_div_stock2, plot_div_ttm_eps2, tbl_div_eps2) = ia_stockcharts.ia_plot_prices(
+         plot_div_stock2, plot_div_ttm_eps2, tbl_div_eps2,
+         plot_div_norm_eps) = ia_stockcharts.ia_plot_prices(
             stock_input_list, sdate, edate, yaxis_type, cycle_type=cycle_type
         )
         
@@ -249,6 +251,7 @@ def index(request):
         'tbl_div_financials': tbl_div_financials,
         'tbl_div_expectations': tbl_div_expectations,
         'plot_div_eps_growth': plot_div_eps_growth,
+        'plot_div_norm_eps': plot_div_norm_eps,
         'plot_div_ttm_eps': plot_div_ttm_eps,
         'plot_div_norm': plot_div_norm,
         'plot_div_stock': plot_div_stock,

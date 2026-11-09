@@ -232,6 +232,9 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
     # Embedded comparison: Growth chart with grouped bars & dual CAGR lines
     plot_div_eps_growth = ia_go_growth_graph(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate, eps_df2=eps_df2, ticker_symbol2=stk_ticker2) if stk_ticker else ""
 
+    # Embedded comparison: Normalized (Base 100) Cumulative TTM EPS Trajectory
+    plot_div_norm_eps = ia_go_norm_ttm_eps_chart(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate, eps_df2=eps_df2, ticker_symbol2=stk_ticker2) if stk_ticker else ""
+
     pdiv1 = ia_go_graph(prices_df[[prices_df.columns[0], prices_df.columns[-1]]], 1, "r", y_scale, "Benchmark index", pe_data=None) if len(prices_df.columns) >= 2 else "<div></div>"
     
     # Primary Stock Price individual chart with P/E corridor
@@ -295,7 +298,7 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
         align_note = ""
     msg = f"Analysis conducted from : {cur_s.strftime('%d-%m-%Y')} to {pd.to_datetime(act_edate).strftime('%d-%m-%Y')}{align_note}"
 
-    return (pdiv4, pdiv5, tbl_div_eps, plot_div_eps_growth, plot_div_ttm_eps, pdiv3, pdiv2, pdiv1, msg, pdiv2_sec, plot_div_ttm_eps2, tbl_div_eps2)
+    return (pdiv4, pdiv5, tbl_div_eps, plot_div_eps_growth, plot_div_ttm_eps, pdiv3, pdiv2, pdiv1, msg, pdiv2_sec, plot_div_ttm_eps2, tbl_div_eps2, plot_div_norm_eps)
 
 def ia_get_financials(comp, exch, sdate, edate):
     cname = ia_sinfo.stock_name_code_map.get(comp, [None, None, comp])[2]
@@ -321,6 +324,10 @@ def ia_reset_returns(ip_df, cycles):
             op_df[sc + " " + str(ctr)] = np.nan
             rel_label = f"RelVal {sname} {ctr}" if len(stk_cols) > 1 else f"RelVal {ctr}"
             op_df[rel_label] = np.nan
+        if len(stk_cols) >= 2:
+            sname1 = short_name(stk_cols[0])
+            sname2 = short_name(stk_cols[1])
+            op_df[f"RelVal {sname1} vs {sname2} {ctr}"] = np.nan
 
     for ctr in range(0, len(cycles)):
         try:
@@ -332,10 +339,12 @@ def ia_reset_returns(ip_df, cycles):
                     sub_mkt = 100 * ip_df[mkt_col].iloc[s_iloc:e_iloc + 1] / base_mkt
                     op_df.iloc[s_iloc:e_iloc + 1, op_df.columns.get_loc(mkt_col + " " + str(ctr))] = sub_mkt
 
+                sub_stk_dict = {}
                 for sc in stk_cols:
                     base_stk = ip_df[sc].iloc[s_iloc]
                     if base_stk != 0 and not pd.isna(base_stk):
                         sub_stk = 100 * ip_df[sc].iloc[s_iloc:e_iloc + 1] / base_stk
+                        sub_stk_dict[sc] = sub_stk
                         op_df.iloc[s_iloc:e_iloc + 1, op_df.columns.get_loc(sc + " " + str(ctr))] = sub_stk
 
                         if base_mkt != 0 and not pd.isna(base_mkt):
@@ -343,6 +352,16 @@ def ia_reset_returns(ip_df, cycles):
                             sname = short_name(sc)
                             rel_label = f"RelVal {sname} {ctr}" if len(stk_cols) > 1 else f"RelVal {ctr}"
                             op_df.iloc[s_iloc:e_iloc + 1, op_df.columns.get_loc(rel_label)] = sub_rel
+
+                if len(stk_cols) >= 2:
+                    sc1 = stk_cols[0]
+                    sc2 = stk_cols[1]
+                    if sc1 in sub_stk_dict and sc2 in sub_stk_dict:
+                        sub_pair = sub_stk_dict[sc1] / sub_stk_dict[sc2].replace(0, np.nan)
+                        sname1 = short_name(sc1)
+                        sname2 = short_name(sc2)
+                        pair_label = f"RelVal {sname1} vs {sname2} {ctr}"
+                        op_df.iloc[s_iloc:e_iloc + 1, op_df.columns.get_loc(pair_label)] = sub_pair
         except Exception:
             pass
 
@@ -1283,6 +1302,261 @@ def ia_go_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None):
     )
 
     return plot(fig, output_type='div', include_plotlyjs=False)
+
+
+def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_df2=None, ticker_symbol2=None):
+    """
+    Renders Normalized (Base 100) Cumulative TTM EPS Comparison Chart.
+    Focuses exclusively on Trailing Twelve Months (TTM) EPS from start date to end date.
+    When both primary and secondary securities exist, compares both on Base 100.
+    """
+    sname1 = short_name(ticker_symbol)
+    has_dual = (eps_df2 is not None and not eps_df2.empty and ticker_symbol2 and str(ticker_symbol2).upper() != "NA")
+    sname2 = short_name(ticker_symbol2) if has_dual else None
+
+    if eps_df is None or eps_df.empty or 'TTM EPS' not in eps_df.columns:
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"Normalized TTM EPS Comparison ({sname1}) - No Data Available",
+            paper_bgcolor="#0D131F",
+            plot_bgcolor="#0D131F",
+            font=dict(color="#94A3B8")
+        )
+        return plot(fig, output_type='div', include_plotlyjs=False)
+
+    def _prepare_ttm_df(df, s_date, e_date):
+        q = df.dropna(subset=['TTM EPS']).sort_values('Date', ascending=True).copy()
+        q = q[q['TTM EPS'] > 0]
+        if s_date:
+            try:
+                s_dt = pd.to_datetime(s_date).normalize()
+                filtered = q[q['Date'] >= s_dt]
+                if not filtered.empty:
+                    q = filtered
+            except Exception:
+                pass
+        if e_date:
+            try:
+                e_dt = pd.to_datetime(e_date).normalize()
+                filtered = q[q['Date'] <= e_dt]
+                if not filtered.empty:
+                    q = filtered
+            except Exception:
+                pass
+        return q
+
+    q_df1 = _prepare_ttm_df(eps_df, sdate, edate)
+    if q_df1.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title=f"Normalized TTM EPS Comparison ({sname1}) - No Data in Range",
+            paper_bgcolor="#0D131F",
+            plot_bgcolor="#0D131F",
+            font=dict(color="#94A3B8")
+        )
+        return plot(fig, output_type='div', include_plotlyjs=False)
+
+    q_df2 = _prepare_ttm_df(eps_df2, sdate, edate) if has_dual else pd.DataFrame()
+    if has_dual and q_df2.empty:
+        has_dual = False
+
+    # Calculate Base 100 for Primary
+    base_ttm1 = float(q_df1['TTM EPS'].iloc[0])
+    latest_ttm1 = float(q_df1['TTM EPS'].iloc[-1])
+    q_df1['Norm_TTM_EPS'] = 100.0 * q_df1['TTM EPS'] / base_ttm1
+    cum_pct1 = ((latest_ttm1 / base_ttm1) - 1.0) * 100.0
+    days1 = (q_df1['Date'].iloc[-1] - q_df1['Date'].iloc[0]).days
+    yrs1 = max(0.1, days1 / 365.25)
+    cagr1 = ((latest_ttm1 / base_ttm1) ** (1.0 / yrs1) - 1.0) * 100.0 if yrs1 >= 0.5 and base_ttm1 > 0 else None
+
+    # Calculate Base 100 for Secondary (if present)
+    base_ttm2 = None
+    latest_ttm2 = None
+    cum_pct2 = None
+    cagr2 = None
+    if has_dual:
+        base_ttm2 = float(q_df2['TTM EPS'].iloc[0])
+        latest_ttm2 = float(q_df2['TTM EPS'].iloc[-1])
+        q_df2['Norm_TTM_EPS'] = 100.0 * q_df2['TTM EPS'] / base_ttm2
+        cum_pct2 = ((latest_ttm2 / base_ttm2) - 1.0) * 100.0
+        days2 = (q_df2['Date'].iloc[-1] - q_df2['Date'].iloc[0]).days
+        yrs2 = max(0.1, days2 / 365.25)
+        cagr2 = ((latest_ttm2 / base_ttm2) ** (1.0 / yrs2) - 1.0) * 100.0 if yrs2 >= 0.5 and base_ttm2 > 0 else None
+
+    # Generate Top Executive Stat Cards
+    cagr1_str = f"{cagr1:+.1f}% p.a." if cagr1 is not None else "N/A"
+    cagr2_str = f"{cagr2:+.1f}% p.a." if cagr2 is not None else "N/A"
+    q_start1 = q_df1['Quarter'].iloc[0] if 'Quarter' in q_df1.columns else ""
+    q_end1 = q_df1['Quarter'].iloc[-1] if 'Quarter' in q_df1.columns else ""
+
+    cards_html = []
+    cards_html.append('<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; background: rgba(13, 19, 31, 0.4); border-radius: 8px;">')
+
+    # Card 1: Primary Security
+    cards_html.append(f'''
+      <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(250, 204, 21, 0.25); border-left: 4px solid #FACC15; border-radius: 8px; padding: 10px 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">[{sname1}] TTM EPS Growth</span>
+          <span style="font-size: 0.7rem; color: #64748B;">{q_start1} → {q_end1}</span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin: 3px 0;">
+          <span style="font-size: 1.25rem; font-weight: 800; color: {'#34D399' if cum_pct1 >= 0 else '#F87171'}; font-family: 'JetBrains Mono', monospace;">{cum_pct1:+.1f}%</span>
+          <span style="font-size: 0.75rem; color: #FACC15; font-weight: 600; font-family: 'JetBrains Mono', monospace;">CAGR: {cagr1_str}</span>
+        </div>
+        <div style="font-size: 0.72rem; color: #94A3B8;">Base: <b>₹{base_ttm1:.2f}</b> → Latest: <b>₹{latest_ttm1:.2f}</b></div>
+      </div>
+    ''')
+
+    # Card 2: Secondary Security (if dual)
+    if has_dual:
+        q_start2 = q_df2['Quarter'].iloc[0] if 'Quarter' in q_df2.columns else ""
+        q_end2 = q_df2['Quarter'].iloc[-1] if 'Quarter' in q_df2.columns else ""
+        cards_html.append(f'''
+          <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(52, 211, 153, 0.25); border-left: 4px solid #34D399; border-radius: 8px; padding: 10px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">[{sname2}] TTM EPS Expansion</span>
+              <span style="font-size: 0.7rem; color: #64748B;">{q_start2} → {q_end2}</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 8px; margin: 3px 0;">
+              <span style="font-size: 1.25rem; font-weight: 800; color: {'#34D399' if cum_pct2 >= 0 else '#F87171'}; font-family: 'JetBrains Mono', monospace;">{cum_pct2:+.1f}%</span>
+              <span style="font-size: 0.75rem; color: #34D399; font-weight: 600; font-family: 'JetBrains Mono', monospace;">CAGR: {cagr2_str}</span>
+            </div>
+            <div style="font-size: 0.72rem; color: #94A3B8;">Base: <b>₹{base_ttm2:.2f}</b> → Latest: <b>₹{latest_ttm2:.2f}</b></div>
+          </div>
+        ''')
+
+        # Card 3: Relative EPS Multiple
+        mult1 = latest_ttm1 / base_ttm1
+        mult2 = latest_ttm2 / base_ttm2
+        rel_diff = ((mult1 / mult2) - 1.0) * 100.0 if mult2 > 0 else 0.0
+        lead_name = sname1 if rel_diff >= 0 else sname2
+        lead_color = "#FACC15" if rel_diff >= 0 else "#34D399"
+        cards_html.append(f'''
+          <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(167, 139, 250, 0.25); border-left: 4px solid #A78BFA; border-radius: 8px; padding: 10px 14px;">
+            <div style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Relative EPS Outperformance</div>
+            <div style="display: flex; align-items: baseline; gap: 8px; margin: 3px 0;">
+              <span style="font-size: 1.25rem; font-weight: 800; color: {lead_color}; font-family: 'JetBrains Mono', monospace;">{abs(rel_diff):.1f}%</span>
+              <span style="font-size: 0.75rem; color: #A78BFA; font-weight: 600;">{lead_name} leading</span>
+            </div>
+            <div style="font-size: 0.72rem; color: #94A3B8;">Expansion multiple: <b>{mult1:.2f}x</b> vs <b>{mult2:.2f}x</b></div>
+          </div>
+        ''')
+
+    cards_html.append('</div>')
+
+    # Build Plotly Figure
+    fig = go.Figure()
+
+    # Determine date span for Base 100 line
+    all_dates = list(q_df1['Date'])
+    if has_dual:
+        all_dates.extend(list(q_df2['Date']))
+    all_dates = sorted(all_dates)
+    min_dt = all_dates[0]
+    max_dt = all_dates[-1]
+
+    # Baseline: 100
+    fig.add_trace(go.Scatter(
+        x=[min_dt, max_dt],
+        y=[100, 100],
+        mode='lines',
+        line=dict(color="rgba(148, 163, 184, 0.45)", width=1.5, dash="dash"),
+        name="Base 100 (Inception)",
+        hoverinfo="skip"
+    ))
+
+    # Trace 1: Primary Security
+    cdata1 = []
+    for _, row in q_df1.iterrows():
+        qtr = str(row.get('Quarter', ''))
+        ann = str(row.get('Announcement Date', ''))
+        act = float(row.get('TTM EPS', 0.0))
+        chg = ((act / base_ttm1) - 1.0) * 100.0
+        cdata1.append([qtr, ann, f"₹{act:.2f}", f"₹{base_ttm1:.2f}", f"{chg:+.1f}%"])
+
+    fig.add_trace(go.Scatter(
+        x=q_df1['Date'],
+        y=q_df1['Norm_TTM_EPS'],
+        mode='lines+markers',
+        line=dict(color="#FACC15", width=2.8, shape="spline"),
+        marker=dict(size=7, color="#FACC15", symbol="circle", line=dict(width=1.5, color="#FFFFFF")),
+        name=f"[{sname1}] Normalized TTM EPS" if has_dual else f"{sname1} Normalized TTM EPS",
+        customdata=np.array(cdata1),
+        hovertemplate=(
+            f"<b>[%{{customdata[0]}}] {sname1}</b><br>"
+            "Date: %{x|%d %b %Y} (%{customdata[1]})<br>"
+            "Normalized TTM EPS: <b>%{y:.1f}</b> (Base 100)<br>"
+            "Actual TTM EPS: <b>%{customdata[2]}</b> (Start: %{customdata[3]})<br>"
+            "Cumulative Expansion: <b>%{customdata[4]}</b><extra></extra>"
+        )
+    ))
+
+    # Trace 2: Secondary Security (if dual)
+    if has_dual:
+        cdata2 = []
+        for _, row in q_df2.iterrows():
+            qtr = str(row.get('Quarter', ''))
+            ann = str(row.get('Announcement Date', ''))
+            act = float(row.get('TTM EPS', 0.0))
+            chg = ((act / base_ttm2) - 1.0) * 100.0
+            cdata2.append([qtr, ann, f"₹{act:.2f}", f"₹{base_ttm2:.2f}", f"{chg:+.1f}%"])
+
+        fig.add_trace(go.Scatter(
+            x=q_df2['Date'],
+            y=q_df2['Norm_TTM_EPS'],
+            mode='lines+markers',
+            line=dict(color="#34D399", width=2.8, shape="spline"),
+            marker=dict(size=7, color="#34D399", symbol="circle", line=dict(width=1.5, color="#FFFFFF")),
+            name=f"[{sname2}] Normalized TTM EPS",
+            customdata=np.array(cdata2),
+            hovertemplate=(
+                f"<b>[%{{customdata[0]}}] {sname2}</b><br>"
+                "Date: %{x|%d %b %Y} (%{customdata[1]})<br>"
+                "Normalized TTM EPS: <b>%{y:.1f}</b> (Base 100)<br>"
+                "Actual TTM EPS: <b>%{customdata[2]}</b> (Start: %{customdata[3]})<br>"
+                "Cumulative Expansion: <b>%{customdata[4]}</b><extra></extra>"
+            )
+        ))
+
+    fig.update_layout(
+        autosize=True,
+        height=450,
+        paper_bgcolor="#0D131F",
+        plot_bgcolor="#090D15",
+        font=dict(color="#F8FAFC", family="Plus Jakarta Sans, sans-serif"),
+        margin=dict(l=55, r=25, t=35, b=45),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0.01,
+            bgcolor="rgba(13, 19, 31, 0.85)",
+            bordercolor="rgba(255, 255, 255, 0.12)",
+            borderwidth=1,
+            font=dict(size=11, family="Plus Jakarta Sans, sans-serif")
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(30, 41, 59, 0.7)",
+            zerolinecolor="#1E293B",
+            linecolor="#334155",
+            tickfont=dict(color="#94A3B8", size=10, family="JetBrains Mono, monospace")
+        ),
+        yaxis=dict(
+            title=dict(text="Normalized TTM EPS (Base 100)", font=dict(color="#94A3B8", size=11, family="Plus Jakarta Sans, sans-serif")),
+            showgrid=True,
+            gridcolor="rgba(30, 41, 59, 0.7)",
+            zerolinecolor="#1E293B",
+            linecolor="#334155",
+            rangemode="tozero",
+            tickfont=dict(color="#94A3B8", size=10, family="JetBrains Mono, monospace")
+        ),
+        hovermode="x unified"
+    )
+
+    plot_html = plot(fig, output_type='div', include_plotlyjs=False)
+    return "".join(cards_html) + plot_html
 
 
 def ia_go_growth_graph(eps_df, ticker_symbol, sdate=None, edate=None, eps_df2=None, ticker_symbol2=None):
@@ -2981,6 +3255,7 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title, pe_data=None):
     COLOR_STOCK2 = "#10B981"     # Emerald Green for Secondary Stock Price
     COLOR_RELVAL = "#FB923C"     # Vivid Warm Tangerine for Primary Relative Value
     COLOR_RELVAL2 = "#F472B6"    # Soft Rose for Secondary Relative Value
+    COLOR_RELVAL_PAIR = "#A78BFA" # Vivid Lavender for Primary vs Secondary Relative Value
     COLOR_PE = "#C084FC"         # Soft Violet for Primary TTM P/E
     COLOR_PE2 = "#F59E0B"        # Warm Amber for Secondary TTM P/E
     COLOR_PEG = "#2DD4BF"        # Teal for Primary PEG
@@ -3040,7 +3315,8 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title, pe_data=None):
                 hovertemplate=f"<b>{display_name}</b> (Period {cycle_idx})<br>Date: %{{x|%d %b %Y}}<br>Indexed: %{{y:.2f}}<extra></extra>"
             ))
 
-        # Relative Value: Stock / Market Index ratio (disabled by default, enabled on click)
+        # Relative Value: Stock / Market Index ratio & Primary vs Secondary (disabled by default, enabled on click)
+        seen_rel_groups = set()
         for r_idx, col in enumerate(rel_cols):
             cycle_idx = col.rsplit(' ', 1)[1] if ' ' in str(col) else str(r_idx)
             col_series = prices_df[col].dropna()
@@ -3048,21 +3324,31 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title, pe_data=None):
                 continue
 
             is_sec = False
+            is_pair = False
             if len(distinct_bases) >= 3:
-                sec_disp = short_name(distinct_bases[2])
-                if sec_disp in str(col):
+                s1_disp = short_name(distinct_bases[1])
+                s2_disp = short_name(distinct_bases[2])
+                if f"vs {s2_disp}" in str(col) or " vs " in str(col):
+                    is_pair = True
+                    r_color = COLOR_RELVAL_PAIR
+                    rel_label = f"Relative Value ({s1_disp} / {s2_disp})"
+                    grp_name = f"RelVal {s1_disp} vs {s2_disp}"
+                elif s2_disp in str(col):
                     is_sec = True
-
-            r_color = COLOR_RELVAL2 if is_sec else COLOR_RELVAL
-            if len(distinct_bases) >= 3:
-                s_label = short_name(distinct_bases[2] if is_sec else distinct_bases[1])
-                rel_label = f"Relative Value ({s_label} / Market)"
-                grp_name = f"RelVal {s_label}"
-                show_leg = (cycle_idx == "0" or r_idx < 2)
+                    r_color = COLOR_RELVAL2
+                    rel_label = f"Relative Value ({s2_disp} / Market)"
+                    grp_name = f"RelVal {s2_disp}"
+                else:
+                    r_color = COLOR_RELVAL
+                    rel_label = f"Relative Value ({s1_disp} / Market)"
+                    grp_name = f"RelVal {s1_disp}"
             else:
                 rel_label = "Relative Value (Stock / Market)"
                 grp_name = "Relative Value"
-                show_leg = (r_idx == 0)
+                r_color = COLOR_RELVAL
+
+            show_leg = (grp_name not in seen_rel_groups)
+            seen_rel_groups.add(grp_name)
 
             n_pts = len(col_series)
             marker_sizes = [0] * (n_pts - 1) + [8] if n_pts > 1 else [8]
@@ -3221,6 +3507,30 @@ def ia_go_graph(prices_df, mode, m2, y_scale, title, pe_data=None):
                     name=rel_title2,
                     visible="legendonly",
                     hovertemplate=f"<b>{rel_title2}</b><br>Date: %{{x|%d %b %Y}}<br>Ratio: %{{y:.2f}}<extra></extra>"
+                ))
+
+            # Relative Value: Primary Security vs Secondary Security
+            rel_series_pair = (prices_df[price_cols[1]] / prices_df[price_cols[2]].replace(0, np.nan)).dropna()
+            if not rel_series_pair.empty:
+                rel_title_pair = f"Relative Value ({sname1_disp} / {sname2_disp})"
+                n_pts = len(rel_series_pair)
+                marker_sizes = [0] * (n_pts - 1) + [8] if n_pts > 1 else [8]
+                marker_widths = [0] * (n_pts - 1) + [1.8] if n_pts > 1 else [1.8]
+
+                _add_relval_trace(go.Scatter(
+                    x=rel_series_pair.index,
+                    y=rel_series_pair.values,
+                    line=dict(color=COLOR_RELVAL_PAIR, width=2.2),
+                    mode='lines+markers',
+                    marker=dict(
+                        size=marker_sizes,
+                        color=COLOR_RELVAL_PAIR,
+                        symbol='circle',
+                        line=dict(width=marker_widths, color='#FFFFFF')
+                    ),
+                    name=rel_title_pair,
+                    visible="legendonly",
+                    hovertemplate=f"<b>{rel_title_pair}</b><br>Date: %{{x|%d %b %Y}}<br>Ratio: %{{y:.2f}}<extra></extra>"
                 ))
 
     else:

@@ -295,6 +295,23 @@
   </div>
   {% endif %}
 
+  {% if plot_div_norm_eps %}
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Normalized Cumulative TTM EPS Trajectory (Base 100)
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_norm_eps }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if plot_div_eps_growth %}
   <div class="col-lg-12">
     <div class="card">
