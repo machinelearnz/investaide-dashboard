@@ -1,7 +1,20 @@
 import pandas as pd
 
-log_writer = pd.ExcelWriter(r".\data_monitor.xlsx")
-log_writer1 = pd.ExcelWriter(r".\data_monitor1.xlsx")
+try:
+    log_writer = pd.ExcelWriter(r".\data_monitor.xlsx")
+except Exception:
+    try:
+        log_writer = pd.ExcelWriter(r".\data_monitor_tmp.xlsx")
+    except Exception:
+        log_writer = None
+
+try:
+    log_writer1 = pd.ExcelWriter(r".\data_monitor1.xlsx")
+except Exception:
+    try:
+        log_writer1 = pd.ExcelWriter(r".\data_monitor1_tmp.xlsx")
+    except Exception:
+        log_writer1 = None
 
 def_exchange = "BSE"
 def_index = "NIFTY50"

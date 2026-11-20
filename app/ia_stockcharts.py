@@ -2061,16 +2061,16 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
         return '<div style="padding: 2.5rem; text-align: center; color: #64748B; font-size: 0.8125rem;">No Financial Statement Data Available</div>'
 
     html = [
-        '<div class="table-responsive" style="max-height: 480px; overflow-y: auto; overflow-x: auto; border: 1px solid rgba(30, 41, 59, 0.7); border-radius: 8px; background: #0D131F;">',
-        '  <table class="table" style="margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; font-family: \'JetBrains Mono\', monospace; font-size: 0.8125rem;">',
+        '<div class="table-responsive ia-stmt-tbl-wrap" style="max-height: 480px; overflow-y: auto; overflow-x: auto; border: 1px solid rgba(30, 41, 59, 0.7); border-radius: 8px; background: #0D131F;">',
+        '  <table class="table ia-stmt-tbl" style="margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; font-family: \'JetBrains Mono\', monospace; font-size: 0.8125rem;">',
         '    <thead>',
         '      <tr>',
-        '        <th style="position: sticky; top: 0; left: 0; z-index: 20; background: #131B2B; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); min-width: 280px; box-shadow: 2px 0 4px rgba(0,0,0,0.3);">Key Line Item</th>'
+        '        <th class="ia-stmt-col-header" style="position: sticky; top: 0; left: 0; z-index: 20; background: #131B2B; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); width: 32%; min-width: 180px; box-shadow: 2px 0 4px rgba(0,0,0,0.3);">Key Line Item</th>'
     ]
 
     for col in df.columns:
         c_label = ia_format_stmt_col_date(col, is_quarterly=is_quarterly)
-        html.append(f'        <th style="position: sticky; top: 0; z-index: 10; background: #131B2B; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; text-align: right; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); white-space: nowrap; min-width: 140px;">{c_label}</th>')
+        html.append(f'        <th class="ia-stmt-col-data" style="position: sticky; top: 0; z-index: 10; background: #131B2B; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; text-align: right; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); width: 17%; min-width: 90px;">{c_label}</th>')
 
     html.append('      </tr>')
     html.append('    </thead>')
@@ -2091,7 +2091,7 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
         font_weight = 'font-weight: 700;' if is_highlight else 'font-weight: 500;'
 
         html.append(f'      <tr style="{row_bg}">')
-        html.append(f'        <td style="position: sticky; left: 0; z-index: 5; background: {"#111928" if is_highlight else "#0D131F"}; padding: 9px 16px; color: {text_color}; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.08); white-space: nowrap; box-shadow: 2px 0 4px rgba(0,0,0,0.2);">{row_name}</td>')
+        html.append(f'        <td class="ia-stmt-cell-header" style="position: sticky; left: 0; z-index: 5; background: {"#111928" if is_highlight else "#0D131F"}; padding: 9px 16px; color: {text_color}; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 2px 0 4px rgba(0,0,0,0.2);">{row_name}</td>')
 
         for col in df.columns:
             val = df.loc[row_name, col]
@@ -2099,7 +2099,7 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
             num_color = '#34D399' if is_highlight else '#E2E8F0'
             if str(val_str).startswith("-₹"):
                 num_color = '#F87171'
-            html.append(f'        <td style="padding: 9px 16px; text-align: right; color: {num_color}; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.06); white-space: nowrap;">{val_str}</td>')
+            html.append(f'        <td class="ia-stmt-cell-data" style="padding: 9px 16px; text-align: right; color: {num_color}; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.06);">{val_str}</td>')
 
         html.append('      </tr>')
 

@@ -95,14 +95,329 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     border-color: rgba(255, 255, 255, 0.25) !important;
   }
+
+  /* --- Executive Publication Paged Media Definition (Forces A4 Landscape) --- */
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+
+  /* --- Executive Publication Print Stylesheet (A4 Landscape & Native Vector PDF) --- */
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 1cm;
+      background-color: #090D16 !important;
+    }
+
+    * {
+      box-sizing: border-box !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+
+    /* Strip all fixed heights and overflows so the document paginates naturally across pages */
+    html, body, .wrapper, .main-wrapper, .main-panel, .content, #ia-analysis-window {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      overflow-x: visible !important;
+      overflow-y: visible !important;
+      position: static !important;
+      float: none !important;
+      background-color: #090D16 !important;
+      background: #090D16 !important;
+      color: #F8FAFC !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Completely eliminate 280px sidebar padding-left from Black Dashboard */
+    .main-panel > .content,
+    .main-panel .content,
+    .content {
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .main-panel,
+    .wrapper {
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    /* Hide UI scrollbars during PDF generation */
+    ::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent !important;
+    }
+    * {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    .ps__rail-x,
+    .ps__rail-y,
+    .ps__thumb-x,
+    .ps__thumb-y {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+    }
+
+    /* Hide non-print UI chrome & interactive controls */
+    .navbar,
+    .sidebar,
+    .footer,
+    .d-print-none,
+    #btn-download-pdf,
+    #parameters-form-card,
+    .pe-ceiling-toolbar,
+    #eps-tabs-group,
+    #eps-tabs-group2,
+    .modebar,
+    button,
+    .btn,
+    form,
+    .autocomplete-dropdown {
+      display: none !important;
+    }
+
+    /* Display the dedicated Executive Publication Header */
+    #pdf-print-header {
+      display: block !important;
+      margin-bottom: 12px !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    /* Page Breaks: avoid splitting cards, sections, charts, KPI widgets, and table rows */
+    .card,
+    .section,
+    .col-12,
+    .col-lg-12,
+    .pdf-section-card,
+    .pdf-params-card,
+    .plotly-graph-div,
+    .plot-container,
+    .svg-container,
+    .ia-expectations-container,
+    .ia-cagr-chip,
+    .ia-stmt-tbl-wrap,
+    .table-responsive,
+    tr {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .card-header {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+
+    thead {
+      display: table-header-group !important;
+    }
+    tbody {
+      display: table-row-group !important;
+    }
+
+    /* Prevent Table Column Truncation: ensure all wide tables fit landscape width */
+    .ia-grid-scroll-wrap,
+    .table-responsive,
+    [style*="overflow"],
+    [style*="max-height"] {
+      overflow: visible !important;
+      max-height: none !important;
+      height: auto !important;
+      width: 100% !important;
+    }
+
+    /* Override Bootstrap print rules that force white background on table cells */
+    table,
+    .table,
+    .ia-grid-tbl,
+    .ia-stmt-tbl {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: auto !important;
+      border-collapse: collapse !important;
+      margin: 0 !important;
+      background-color: #0D131F !important;
+      background: #0D131F !important;
+      color: #F8FAFC !important;
+    }
+
+    table th,
+    .table th,
+    .ia-grid-tbl th,
+    .ia-stmt-tbl th,
+    .ia-stmt-col-header {
+      position: static !important;
+      box-shadow: none !important;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      padding: 6px 8px !important;
+      font-size: 7.5pt !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Consolas, monospace !important;
+      background-color: #131B2B !important;
+      background: #131B2B !important;
+      color: #38BDF8 !important;
+    }
+
+    table td,
+    .table td,
+    .ia-grid-tbl td,
+    .ia-stmt-tbl td,
+    .ia-stmt-cell-header,
+    .ia-stmt-cell-data {
+      position: static !important;
+      box-shadow: none !important;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      padding: 6px 8px !important;
+      font-size: 7.5pt !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Consolas, monospace !important;
+      background-color: #0D131F !important;
+      background: #0D131F !important;
+      color: #F8FAFC !important;
+    }
+
+    .table tr[style*="rgba(14, 140, 228"] td,
+    .table tr[style*="background: rgba"] td,
+    .ia-stmt-tbl tr[style*="rgba(14, 140, 228"] td {
+      background-color: #111E33 !important;
+      background: #111E33 !important;
+    }
+
+    .ia-stmt-tbl tr[style*="rgba(56, 189, 248"] td {
+      background-color: #0F2238 !important;
+      background: #0F2238 !important;
+      color: #38BDF8 !important;
+    }
+
+    /* Corporate Financial Statement Table Proportions (Prevent FY 2026 Column Truncation) */
+    .ia-stmt-tbl-wrap,
+    .table-responsive {
+      overflow: visible !important;
+      max-height: none !important;
+      height: auto !important;
+      width: 100% !important;
+    }
+    .ia-stmt-tbl {
+      table-layout: fixed !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      border-collapse: collapse !important;
+      margin: 0 !important;
+    }
+    .ia-stmt-tbl th,
+    .ia-stmt-tbl td {
+      position: static !important;
+      box-shadow: none !important;
+      min-width: 0 !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+    .ia-stmt-col-header,
+    .ia-stmt-cell-header {
+      width: 32% !important;
+      max-width: 32% !important;
+      font-size: 7.5pt !important;
+      padding: 5px 8px !important;
+      text-align: left !important;
+    }
+    .ia-stmt-col-data,
+    .ia-stmt-cell-data {
+      width: 17% !important;
+      max-width: 17% !important;
+      font-size: 7.5pt !important;
+      padding: 5px 8px !important;
+      text-align: right !important;
+    }
+
+    /* Native Vector SVG Scaling (No Rasterization, 100% Selectable Text) */
+    .plotly-graph-div,
+    .plot-container,
+    .svg-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: visible !important;
+    }
+
+    /* First Widget (Consensus Expectations) Grid: 4 equal columns side-by-side */
+    .card-body > .row {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      margin: 0 -4px !important;
+      gap: 6px !important;
+    }
+    .card-body > .row > .col-lg-3,
+    .card-body > .row > .col-sm-6,
+    .col-lg-3, .col-sm-6 {
+      flex: 1 1 25% !important;
+      max-width: 25% !important;
+      width: 25% !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+    }
+    div[style*="display: flex; flex-wrap: wrap; gap: 10px"] {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      gap: 6px !important;
+    }
+    div[style*="display: flex; flex-wrap: wrap; gap: 10px"] > div {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+      padding: 6px 10px !important;
+    }
+
+    /* Compact Obsidian Cards */
+    .card {
+      background: #0D131F !important;
+      border: 1px solid #1E293B !important;
+      border-radius: 8px !important;
+      margin-bottom: 12px !important;
+      box-shadow: none !important;
+    }
+    .card-header {
+      background: #111928 !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+      padding: 8px 12px !important;
+    }
+    .card-header h4 {
+      font-size: 8.5pt !important;
+      margin: 0 !important;
+    }
+    .card-body {
+      padding: 8px 12px !important;
+    }
+    .card-body.p-0 {
+      padding: 4px 8px !important;
+    }
+  }
 </style>
 {% endblock stylesheets %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="row mb-4">
+<div class="row mb-4 d-print-none">
   <div class="col-12">
-    <div class="d-flex flex-column flex-md-row md:align-items-center justify-content-between pb-3" style="border-bottom: 1px solid rgba(30, 41, 59, 0.6); gap: 1rem;">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between pb-3" style="border-bottom: 1px solid rgba(30, 41, 59, 0.6); gap: 1rem;">
       <div>
         <div class="d-inline-flex align-items-center mb-2" style="gap: 0.5rem; padding: 0.25rem 0.625rem; border-radius: 9999px; background: rgba(14, 140, 228, 0.1); border: 1px solid rgba(14, 140, 228, 0.25); color: #38A9F6; font-size: 0.6875rem; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
           <span>STATISTICAL ARBITRAGE & QUANTITATIVE PAIRS</span>
@@ -114,12 +429,18 @@
           Unsupervised quantitative modeling to evaluate cointegration, historical beta sensitivity, and mean-reverting price spreads across Indian equities.
         </p>
       </div>
+      <div class="d-flex align-items-center mt-2 mt-md-0">
+        <button type="button" id="btn-download-pdf" onclick="iaExportAnalysisPDF()" class="btn btn-sm" style="background: linear-gradient(135deg, rgba(14, 140, 228, 0.18), rgba(2, 132, 199, 0.28)); border: 1px solid #38A9F6; color: #38A9F6; font-weight: 700; font-size: 0.8125rem; padding: 0.5rem 1.1rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(14, 140, 228, 0.15);" onmouseover="this.style.background='rgba(56, 169, 246, 0.3)'; this.style.boxShadow='0 0 14px rgba(56, 169, 246, 0.4)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(14, 140, 228, 0.18), rgba(2, 132, 199, 0.28))'; this.style.boxShadow='0 2px 8px rgba(14, 140, 228, 0.15)'">
+          <i class="fas fa-file-pdf" style="font-size: 0.95rem;"></i>
+          <span>Download PDF</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Parameters Card -->
-<div class="row">
+<div class="row d-print-none" id="parameters-form-card">
   <div class="col-12">
     <div class="card">
       <div class="card-header">
@@ -191,7 +512,42 @@
   </div>
 </div>
 
+<!-- Executive Publication Header (Printed in PDF / Ctrl+P only) -->
+<div id="pdf-print-header" class="d-none" style="display: none;">
+  <div class="pdf-header">
+    <div class="pdf-top-row">
+      <div>
+        <div class="pdf-logo">ROHIT CURIOSITY <span style="color: #38BDF8;">• INVESTAIDE</span></div>
+        <div class="pdf-tagline">Quantitative Finance • Risk Intelligence &amp; Relative Value Dynamics</div>
+      </div>
+      <div class="pdf-author-badge">
+        <strong>Rohit Gajare, CFA, FRM, RAI</strong><br>
+        <span style="color: #64748B;">rohitcuriosity.com • Portfolio Analytics</span>
+      </div>
+    </div>
+    <div class="pdf-badge">STATISTICAL ARBITRAGE &amp; QUANTITATIVE PAIRS</div>
+    <h1 class="pdf-title">Relative Value Analysis Report</h1>
+    <div class="pdf-subtitle">
+      Unsupervised quantitative modeling to evaluate cointegration, historical beta sensitivity, and mean-reverting price spreads across Indian equities.
+    </div>
+  </div>
+
+  <div class="pdf-params-card">
+    <div class="pdf-params-title">MODEL CONFIGURATION &amp; PARAMETERS</div>
+    <div class="pdf-params-grid">
+      <div class="pdf-param-item"><span>Benchmark Index:</span> <strong id="pdf-param-bench">NIFTY50</strong></div>
+      <div class="pdf-param-item"><span>Primary Security:</span> <strong id="pdf-param-primary">-</strong></div>
+      <div class="pdf-param-item"><span>Secondary Security:</span> <strong id="pdf-param-sec">NA</strong></div>
+      <div class="pdf-param-item"><span>Y-Axis Scale:</span> <strong id="pdf-param-scale">Log</strong></div>
+      <div class="pdf-param-item"><span>Cycle Breakdown:</span> <strong id="pdf-param-cycle">Bull &amp; Bear Cycles</strong></div>
+      <div class="pdf-param-item"><span>Analysis Horizon:</span> <strong id="pdf-param-horizon">-</strong></div>
+    </div>
+    <div id="pdf-param-align-note" style="display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08); font-size: 7pt; color: #38BDF8;"></div>
+  </div>
+</div>
+
 <!-- Primary Valuation & Metrics -->
+<div id="ia-analysis-window">
 <div class="row">
   {% if tbl_div_expectations %}
   <div class="col-lg-12">
@@ -529,6 +885,8 @@
     </div>
   </div>
 </div>
+</div>
+<!-- /#ia-analysis-window -->
 
 {% endblock content %}
 
@@ -682,6 +1040,136 @@ function iaToggleCagrLine(labelPrefix, cardEl) {
   } else {
     cardEl.style.opacity = '0.35';
     cardEl.style.filter = 'grayscale(80%)';
+  }
+}
+
+// --- Executive Publication PDF Exporter (Native Vector PDF & A4 Landscape) ---
+function iaExportAnalysisPDF() {
+  const analysisWin = document.getElementById('ia-analysis-window');
+  if (!analysisWin) {
+    alert('Analysis window not found.');
+    return;
+  }
+
+  const plotDivs = analysisWin.querySelectorAll('.plotly-graph-div');
+  if (!plotDivs.length) {
+    alert('Please run an analysis first to generate charts and models before downloading the PDF report.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-download-pdf');
+  const origBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i><span>Preparing Report...</span>';
+  }
+
+  try {
+    // 1. Gather & Sanitize Model Parameters
+    const selStockEl = document.getElementById('id_stock_index');
+    let primaryTicker = (selStockEl ? (selStockEl.value || selStockEl.getAttribute('value') || '') : '').trim() || 'PRIMARY_SECURITY';
+
+    const selSecStockEl = document.getElementById('id_secondary_stock');
+    let secondaryTicker = (selSecStockEl ? (selSecStockEl.value || selSecStockEl.getAttribute('value') || '') : '').trim();
+
+    const selBenEl = document.getElementById('id_benchmark');
+    let benchmark = (selBenEl ? (selBenEl.value || 'NIFTY50') : 'NIFTY50').trim();
+
+    const sdate = (document.getElementById('id_sdate') ? document.getElementById('id_sdate').value : '').trim();
+    const edate = (document.getElementById('id_edate') ? document.getElementById('id_edate').value : '').trim();
+
+    const yaxisEl = document.getElementById('id_yaxis_type');
+    const yaxisScale = yaxisEl ? (yaxisEl.value || 'Log') : 'Log';
+
+    const cycleEl = document.getElementById('id_cycle_type');
+    let cycleBreakdown = 'Bull & Bear Cycles';
+    if (cycleEl) {
+      if (cycleEl.selectedOptions && cycleEl.selectedOptions.length > 0) {
+        cycleBreakdown = cycleEl.selectedOptions[0].text;
+      } else {
+        cycleBreakdown = cycleEl.value || 'Bull & Bear Cycles';
+      }
+    }
+
+    // Populate Print Header Elements
+    const elBench = document.getElementById('pdf-param-bench');
+    if (elBench) elBench.textContent = benchmark;
+
+    const elPrimary = document.getElementById('pdf-param-primary');
+    if (elPrimary) elPrimary.textContent = primaryTicker;
+
+    const elSec = document.getElementById('pdf-param-sec');
+    if (elSec) elSec.textContent = (secondaryTicker && secondaryTicker !== 'NA') ? secondaryTicker : 'NA (Single Stock Mode)';
+
+    const elScale = document.getElementById('pdf-param-scale');
+    if (elScale) elScale.textContent = yaxisScale;
+
+    const elCycle = document.getElementById('pdf-param-cycle');
+    if (elCycle) elCycle.textContent = cycleBreakdown;
+
+    const elHorizon = document.getElementById('pdf-param-horizon');
+    if (elHorizon) elHorizon.textContent = (sdate || 'N/A') + ' → ' + (edate || 'N/A');
+
+    const noteEl = document.querySelector('.card-body .rounded-xl');
+    const elNote = document.getElementById('pdf-param-align-note');
+    if (elNote) {
+      if (noteEl && noteEl.innerText.trim()) {
+        elNote.textContent = noteEl.innerText.trim().replace(/\n+/g, ' — ');
+        elNote.style.display = 'block';
+      } else {
+        elNote.style.display = 'none';
+      }
+    }
+
+    // 2. Trigger native Plotly redraw across full width so charts expand to 100% landscape width
+    document.querySelectorAll('#ia-analysis-window .plotly-graph-div').forEach(function(div) {
+      if (window.Plotly && div.data) {
+        Plotly.Plots.resize(div);
+      }
+    });
+
+    // 3. Set suggested save filename: InvestAide_RelativeValue_<TICKER>_<DATE>.pdf
+    const origTitle = document.title;
+    const cleanPrimaryName = primaryTicker.replace(/[\^]/g, '');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    document.title = `InvestAide_RelativeValue_${cleanPrimaryName}_${todayStr}`;
+
+    // 4. Temporarily strip container overflow constraints for seamless multi-page pagination
+    const printWrappers = document.querySelectorAll('.wrapper, .main-panel, .content, #ia-analysis-window');
+    printWrappers.forEach(function(el) {
+      el.style.setProperty('overflow', 'visible', 'important');
+      el.style.setProperty('height', 'auto', 'important');
+      el.style.setProperty('max-height', 'none', 'important');
+    });
+    document.documentElement.style.setProperty('overflow', 'visible', 'important');
+    document.body.style.setProperty('overflow', 'visible', 'important');
+
+    // 5. Trigger Native Vector Browser Print (Landscape enforced via @page CSS)
+    setTimeout(function() {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origBtnHtml;
+      }
+      window.print();
+      setTimeout(function() {
+        document.title = origTitle;
+        printWrappers.forEach(function(el) {
+          el.style.removeProperty('overflow');
+          el.style.removeProperty('height');
+          el.style.removeProperty('max-height');
+        });
+        document.documentElement.style.removeProperty('overflow');
+        document.body.style.removeProperty('overflow');
+      }, 1500);
+    }, 200);
+
+  } catch (err) {
+    console.error('Error initiating print:', err);
+    alert('An error occurred while preparing the PDF: ' + err.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+    }
   }
 }
 

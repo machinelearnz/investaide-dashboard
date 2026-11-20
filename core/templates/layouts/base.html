@@ -174,6 +174,91 @@
       border-radius: 0.75rem !important;
       overflow: hidden !important;
     }
+
+    /* --- Global Print & PDF Overrides --- */
+    @page {
+      size: A4 landscape;
+      margin: 1cm;
+    }
+
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 1cm;
+      }
+
+      /* Strip all fixed heights and overflows so the document paginates naturally */
+      html, body, .wrapper, .main-wrapper, .main-panel, .content {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        position: static !important;
+        float: none !important;
+      }
+
+      /* Completely eliminate 280px sidebar padding-left from Black Dashboard */
+      .main-panel > .content,
+      .main-panel .content,
+      .content {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .main-panel,
+      .wrapper {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      /* Override Bootstrap print rules that force white background on table cells */
+      table, .table {
+        background-color: #0D131F !important;
+        background: #0D131F !important;
+        color: #F8FAFC !important;
+      }
+      table th, .table th {
+        background-color: #131B2B !important;
+        background: #131B2B !important;
+        color: #38BDF8 !important;
+      }
+      table td, .table td {
+        background-color: #0D131F !important;
+        background: #0D131F !important;
+        color: #F8FAFC !important;
+      }
+
+      /* Hide all UI scrollbars during PDF generation */
+      ::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        background: transparent !important;
+      }
+      * {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+      }
+      .ps__rail-x,
+      .ps__rail-y,
+      .ps__thumb-x,
+      .ps__thumb-y {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+      }
+
+      /* Prevent awkward page splits across key cards and sections */
+      .card, .section, .card-chart {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+    }
   </style>
 
   {% block stylesheets %}{% endblock stylesheets %}
