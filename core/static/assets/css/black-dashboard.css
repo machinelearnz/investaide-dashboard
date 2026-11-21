@@ -12677,7 +12677,8 @@ a.text-darker:focus {
 
   .table td,
   .table th {
-    background-color: #ffffff !important;
+    background-color: #0D131F !important;
+    color: #F8FAFC !important;
   }
 
   .table-bordered th,

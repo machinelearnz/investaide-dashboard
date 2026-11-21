@@ -1,0 +1,38 @@
+{
+  "BAJAJ-AUTO.NS": {
+    "ticker": "BAJAJ-AUTO.NS",
+    "sname": "BAJAJ AUTO LTD.",
+    "target_low": 9259.0,
+    "target_median": 11977.5,
+    "target_mean": 12037.904,
+    "target_high": 14300.0,
+    "forward_eps": 506.01315,
+    "forward_pe": 21.27415,
+    "trailing_pe": 22.962885,
+    "is_consensus": true
+  },
+  "HEROMOTOCO.NS": {
+    "ticker": "HEROMOTOCO.NS",
+    "sname": "HERO MOTOCORP LTD.",
+    "target_low": 4350.0,
+    "target_median": 6000.0,
+    "target_mean": 6094.1055,
+    "target_high": 7554.0,
+    "forward_eps": 322.0688,
+    "forward_pe": 17.188875,
+    "trailing_pe": 18.474888,
+    "is_consensus": true
+  },
+  "LT.NS": {
+    "ticker": "LT.NS",
+    "sname": "LARSEN & TOUBRO LTD.",
+    "target_low": 3450.0,
+    "target_median": 4540.0,
+    "target_mean": 4512.11,
+    "target_high": 5185.0,
+    "forward_eps": 180.15,
+    "forward_pe": 23.36,
+    "trailing_pe": 32.42,
+    "is_consensus": true
+  }
+}

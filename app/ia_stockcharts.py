@@ -32,6 +32,35 @@ else:
 # sklearn KMeans and TSNE are lazily imported inside ia_get_clusters() to optimize startup RAM
 
 
+# Module-level session cache to store computed earnings, trailing EPS, YoY growth, and valuation multiples
+_LAST_SECURITY_DATA = {}
+
+def _load_consensus_cache(ticker):
+    try:
+        import json, os
+        cache_path = os.path.join(os.path.dirname(__file__), 'consensus_cache.json')
+        if os.path.exists(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                all_cache = json.load(f)
+                return all_cache.get(ticker)
+    except Exception as e:
+        print(f"Error loading consensus cache: {e}")
+    return None
+
+def _save_consensus_cache(ticker, data):
+    try:
+        import json, os
+        cache_path = os.path.join(os.path.dirname(__file__), 'consensus_cache.json')
+        existing = {}
+        if os.path.exists(cache_path):
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+        existing[ticker] = data
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            json.dump(existing, f, indent=2)
+    except Exception as e:
+        print(f"Error saving consensus cache for {ticker}: {e}")
+
 ### This file contains all the stock graph plot functions
 
 def ia_plot_similar_stocks(stock_list, sdate, edate):
@@ -221,6 +250,31 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
         if not ttm_eps2.empty:
             pe_data2 = ia_calc_daily_pe(prices_df[prices_df.columns[2]], ttm_eps2, yoy_growth=yoy_growth2)
 
+    # Cache security data for robust expectations fallback
+    global _LAST_SECURITY_DATA
+    if stk_ticker:
+        last_p = None
+        if len(prices_df.columns) >= 2 and not prices_df[prices_df.columns[1]].dropna().empty:
+            last_p = float(prices_df[prices_df.columns[1]].dropna().iloc[-1])
+        _LAST_SECURITY_DATA[stk_ticker] = {
+            'eps_df': eps_df,
+            'ttm_eps': ttm_eps,
+            'yoy_growth': yoy_growth,
+            'pe_data': pe_data,
+            'last_price': last_p
+        }
+    if stk_ticker2:
+        last_p2 = None
+        if len(prices_df.columns) >= 3 and not prices_df[prices_df.columns[2]].dropna().empty:
+            last_p2 = float(prices_df[prices_df.columns[2]].dropna().iloc[-1])
+        _LAST_SECURITY_DATA[stk_ticker2] = {
+            'eps_df': eps_df2,
+            'ttm_eps': ttm_eps2,
+            'yoy_growth': yoy_growth2,
+            'pe_data': pe_data2,
+            'last_price': last_p2
+        }
+
     # Individual charts & tables for primary security
     plot_div_ttm_eps = ia_go_ttm_eps_chart(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate) if stk_ticker else ""
     tbl_div_eps = ia_go_eps_table(eps_df, prices_df[prices_df.columns[1]] if len(prices_df.columns) >= 2 else None, stk_ticker) if stk_ticker else ""
@@ -232,8 +286,8 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
     # Embedded comparison: Growth chart with grouped bars & dual CAGR lines
     plot_div_eps_growth = ia_go_growth_graph(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate, eps_df2=eps_df2, ticker_symbol2=stk_ticker2) if stk_ticker else ""
 
-    # Embedded comparison: Normalized (Base 100) Cumulative TTM EPS Trajectory
-    plot_div_norm_eps = ia_go_norm_ttm_eps_chart(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate, eps_df2=eps_df2, ticker_symbol2=stk_ticker2) if stk_ticker else ""
+    # Embedded comparison: Normalized (Base 100) Cumulative TTM EPS Trajectory & Relative Value
+    plot_div_norm_eps = ia_go_norm_ttm_eps_chart(eps_df, stk_ticker, sdate=act_sdate, edate=act_edate, eps_df2=eps_df2, ticker_symbol2=stk_ticker2, norm_prices_df=norm_prices_df) if stk_ticker else ""
 
     pdiv1 = ia_go_graph(prices_df[[prices_df.columns[0], prices_df.columns[-1]]], 1, "r", y_scale, "Benchmark index", pe_data=None) if len(prices_df.columns) >= 2 else "<div></div>"
     
@@ -1304,11 +1358,12 @@ def ia_go_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None):
     return plot(fig, output_type='div', include_plotlyjs=False)
 
 
-def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_df2=None, ticker_symbol2=None):
+def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_df2=None, ticker_symbol2=None, norm_prices_df=None):
     """
-    Renders Normalized (Base 100) Cumulative TTM EPS Comparison Chart.
-    Focuses exclusively on Trailing Twelve Months (TTM) EPS from start date to end date.
-    When both primary and secondary securities exist, compares both on Base 100.
+    Renders Normalized (Base 100) Cumulative Trajectory:
+    1. EPS Base: Normalized Cumulative TTM EPS for Primary & Secondary Securities.
+    2. Price Relative Value: Stock 1 vs Benchmark, Stock 2 vs Benchmark, and Stock 1 vs Stock 2 (Base 100).
+    Allows direct visual comparison between earnings expansion and market price outperformance.
     """
     sname1 = short_name(ticker_symbol)
     has_dual = (eps_df2 is not None and not eps_df2.empty and ticker_symbol2 and str(ticker_symbol2).upper() != "NA")
@@ -1317,7 +1372,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
     if eps_df is None or eps_df.empty or 'TTM EPS' not in eps_df.columns:
         fig = go.Figure()
         fig.update_layout(
-            title=f"Normalized TTM EPS Comparison ({sname1}) - No Data Available",
+            title=f"Normalized TTM EPS & Relative Value Comparison ({sname1}) - No Data Available",
             paper_bgcolor="#0D131F",
             plot_bgcolor="#0D131F",
             font=dict(color="#94A3B8")
@@ -1349,7 +1404,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
     if q_df1.empty:
         fig = go.Figure()
         fig.update_layout(
-            title=f"Normalized TTM EPS Comparison ({sname1}) - No Data in Range",
+            title=f"Normalized TTM EPS & Relative Value Comparison ({sname1}) - No Data in Range",
             paper_bgcolor="#0D131F",
             plot_bgcolor="#0D131F",
             font=dict(color="#94A3B8")
@@ -1360,7 +1415,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
     if has_dual and q_df2.empty:
         has_dual = False
 
-    # Calculate Base 100 for Primary
+    # Calculate Base 100 for Primary Security EPS
     base_ttm1 = float(q_df1['TTM EPS'].iloc[0])
     latest_ttm1 = float(q_df1['TTM EPS'].iloc[-1])
     q_df1['Norm_TTM_EPS'] = 100.0 * q_df1['TTM EPS'] / base_ttm1
@@ -1369,7 +1424,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
     yrs1 = max(0.1, days1 / 365.25)
     cagr1 = ((latest_ttm1 / base_ttm1) ** (1.0 / yrs1) - 1.0) * 100.0 if yrs1 >= 0.5 and base_ttm1 > 0 else None
 
-    # Calculate Base 100 for Secondary (if present)
+    # Calculate Base 100 for Secondary Security EPS (if present)
     base_ttm2 = None
     latest_ttm2 = None
     cum_pct2 = None
@@ -1383,6 +1438,37 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
         yrs2 = max(0.1, days2 / 365.25)
         cagr2 = ((latest_ttm2 / base_ttm2) ** (1.0 / yrs2) - 1.0) * 100.0 if yrs2 >= 0.5 and base_ttm2 > 0 else None
 
+    # Calculate Price Relative Value Series (Base 100)
+    has_prices = (norm_prices_df is not None and not norm_prices_df.empty and len(norm_prices_df.columns) >= 2)
+    rel_val1 = None
+    rel_val2 = None
+    rel_val_pair = None
+    bench_name = "Benchmark"
+    if has_prices:
+        mkt_c = norm_prices_df.columns[0]
+        stk1_c = norm_prices_df.columns[1]
+        stk2_c = norm_prices_df.columns[2] if (len(norm_prices_df.columns) >= 3 and norm_prices_df.columns[2] != 'Phase') else None
+        bench_name = short_name(mkt_c)
+
+        s1_series = norm_prices_df[stk1_c].dropna()
+        mkt_series = norm_prices_df[mkt_c].dropna()
+        c_idx1 = s1_series.index.intersection(mkt_series.index)
+        if not c_idx1.empty:
+            rel_val1 = (s1_series.loc[c_idx1] / mkt_series.loc[c_idx1].replace(0, np.nan)) * 100.0
+            rel_val1 = rel_val1.dropna()
+
+        if stk2_c and stk2_c in norm_prices_df.columns:
+            s2_series = norm_prices_df[stk2_c].dropna()
+            c_idx2 = s2_series.index.intersection(mkt_series.index)
+            if not c_idx2.empty:
+                rel_val2 = (s2_series.loc[c_idx2] / mkt_series.loc[c_idx2].replace(0, np.nan)) * 100.0
+                rel_val2 = rel_val2.dropna()
+
+            c_idx_p = s1_series.index.intersection(s2_series.index)
+            if not c_idx_p.empty:
+                rel_val_pair = (s1_series.loc[c_idx_p] / s2_series.loc[c_idx_p].replace(0, np.nan)) * 100.0
+                rel_val_pair = rel_val_pair.dropna()
+
     # Generate Top Executive Stat Cards
     cagr1_str = f"{cagr1:+.1f}% p.a." if cagr1 is not None else "N/A"
     cagr2_str = f"{cagr2:+.1f}% p.a." if cagr2 is not None else "N/A"
@@ -1390,9 +1476,10 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
     q_end1 = q_df1['Quarter'].iloc[-1] if 'Quarter' in q_df1.columns else ""
 
     cards_html = []
-    cards_html.append('<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; background: rgba(13, 19, 31, 0.4); border-radius: 8px;">')
+    # Row 1: EPS Fundamental Base Cards
+    cards_html.append('<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; padding: 12px 14px; background: rgba(13, 19, 31, 0.4); border-radius: 8px;">')
 
-    # Card 1: Primary Security
+    # Card 1: Primary Security EPS
     cards_html.append(f'''
       <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(250, 204, 21, 0.25); border-left: 4px solid #FACC15; border-radius: 8px; padding: 10px 14px;">
         <div style="display: flex; justify-content: space-between; align-items: baseline;">
@@ -1407,7 +1494,9 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
       </div>
     ''')
 
-    # Card 2: Secondary Security (if dual)
+    # Card 2: Secondary Security EPS (if dual)
+    mult1 = latest_ttm1 / base_ttm1
+    mult2 = (latest_ttm2 / base_ttm2) if (has_dual and base_ttm2 and base_ttm2 > 0) else 1.0
     if has_dual:
         q_start2 = q_df2['Quarter'].iloc[0] if 'Quarter' in q_df2.columns else ""
         q_end2 = q_df2['Quarter'].iloc[-1] if 'Quarter' in q_df2.columns else ""
@@ -1426,8 +1515,6 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
         ''')
 
         # Card 3: Relative EPS Multiple
-        mult1 = latest_ttm1 / base_ttm1
-        mult2 = latest_ttm2 / base_ttm2
         rel_diff = ((mult1 / mult2) - 1.0) * 100.0 if mult2 > 0 else 0.0
         lead_name = sname1 if rel_diff >= 0 else sname2
         lead_color = "#FACC15" if rel_diff >= 0 else "#34D399"
@@ -1444,6 +1531,68 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
 
     cards_html.append('</div>')
 
+    # Row 2: Price Relative Value Cards (when price data available)
+    if has_prices and rel_val1 is not None and not rel_val1.empty:
+        cards_html.append('<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; background: rgba(13, 19, 31, 0.4); border-radius: 8px;">')
+
+        # RelVal Card 1: Stock 1 vs Benchmark
+        latest_rv1 = float(rel_val1.iloc[-1])
+        rv1_chg = latest_rv1 - 100.0
+        cards_html.append(f'''
+          <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(56, 189, 248, 0.25); border-left: 4px solid #38BDF8; border-radius: 8px; padding: 10px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">[{sname1}] vs Benchmark (RelVal)</span>
+              <span style="font-size: 0.7rem; color: #38BDF8; font-weight: 700;">Base 100</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 8px; margin: 3px 0;">
+              <span style="font-size: 1.25rem; font-weight: 800; color: {'#34D399' if rv1_chg >= 0 else '#F87171'}; font-family: 'JetBrains Mono', monospace;">{latest_rv1:.1f}</span>
+              <span style="font-size: 0.75rem; color: {'#34D399' if rv1_chg >= 0 else '#F87171'}; font-weight: 600; font-family: 'JetBrains Mono', monospace;">({rv1_chg:+.1f}%)</span>
+            </div>
+            <div style="font-size: 0.72rem; color: #94A3B8;">Price Outperformance: <b>{latest_rv1/100.0:.2f}x</b> vs {bench_name}</div>
+          </div>
+        ''')
+
+        # RelVal Card 2: Stock 2 vs Benchmark (if dual)
+        if has_dual and rel_val2 is not None and not rel_val2.empty:
+            latest_rv2 = float(rel_val2.iloc[-1])
+            rv2_chg = latest_rv2 - 100.0
+            cards_html.append(f'''
+              <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(167, 139, 250, 0.25); border-left: 4px solid #A78BFA; border-radius: 8px; padding: 10px 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                  <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">[{sname2}] vs Benchmark (RelVal)</span>
+                  <span style="font-size: 0.7rem; color: #A78BFA; font-weight: 700;">Base 100</span>
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 8px; margin: 3px 0;">
+                  <span style="font-size: 1.25rem; font-weight: 800; color: {'#34D399' if rv2_chg >= 0 else '#F87171'}; font-family: 'JetBrains Mono', monospace;">{latest_rv2:.1f}</span>
+                  <span style="font-size: 0.75rem; color: {'#34D399' if rv2_chg >= 0 else '#F87171'}; font-weight: 600; font-family: 'JetBrains Mono', monospace;">({rv2_chg:+.1f}%)</span>
+                </div>
+                <div style="font-size: 0.72rem; color: #94A3B8;">Price Outperformance: <b>{latest_rv2/100.0:.2f}x</b> vs {bench_name}</div>
+              </div>
+            ''')
+
+        # RelVal Card 3: Stock 1 vs Stock 2 (if dual)
+        if has_dual and rel_val_pair is not None and not rel_val_pair.empty:
+            latest_rv_p = float(rel_val_pair.iloc[-1])
+            rv_p_chg = latest_rv_p - 100.0
+            pair_lead = sname1 if latest_rv_p >= 100.0 else sname2
+            pair_lead_col = "#38BDF8" if latest_rv_p >= 100.0 else "#A78BFA"
+            eps_ratio = (mult1 / mult2) if mult2 > 0 else 1.0
+            cards_html.append(f'''
+              <div style="flex: 1; min-width: 220px; background: #0B111E; border: 1px solid rgba(251, 113, 133, 0.25); border-left: 4px solid #FB7185; border-radius: 8px; padding: 10px 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                  <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Pair RelVal [{sname1} vs {sname2}]</span>
+                  <span style="font-size: 0.7rem; color: {pair_lead_col}; font-weight: 700;">{pair_lead} leading</span>
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 8px; margin: 3px 0;">
+                  <span style="font-size: 1.25rem; font-weight: 800; color: #FB7185; font-family: 'JetBrains Mono', monospace;">{latest_rv_p:.1f}</span>
+                  <span style="font-size: 0.75rem; color: #FB7185; font-weight: 600; font-family: 'JetBrains Mono', monospace;">({rv_p_chg:+.1f}%)</span>
+                </div>
+                <div style="font-size: 0.72rem; color: #94A3B8;">Price Ratio: <b>{latest_rv_p/100.0:.2f}x</b> (vs EPS Multiple: <b>{eps_ratio:.2f}x</b>)</div>
+              </div>
+            ''')
+
+        cards_html.append('</div>')
+
     # Build Plotly Figure
     fig = go.Figure()
 
@@ -1451,6 +1600,8 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
     all_dates = list(q_df1['Date'])
     if has_dual:
         all_dates.extend(list(q_df2['Date']))
+    if has_prices and not norm_prices_df.empty:
+        all_dates.extend(list(norm_prices_df.index))
     all_dates = sorted(all_dates)
     min_dt = all_dates[0]
     max_dt = all_dates[-1]
@@ -1465,7 +1616,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
         hoverinfo="skip"
     ))
 
-    # Trace 1: Primary Security
+    # Trace 1: Primary Security EPS Base
     cdata1 = []
     for _, row in q_df1.iterrows():
         qtr = str(row.get('Quarter', ''))
@@ -1483,7 +1634,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
         name=f"[{sname1}] Normalized TTM EPS" if has_dual else f"{sname1} Normalized TTM EPS",
         customdata=np.array(cdata1),
         hovertemplate=(
-            f"<b>[%{{customdata[0]}}] {sname1}</b><br>"
+            f"<b>[%{{customdata[0]}}] {sname1} EPS Base</b><br>"
             "Date: %{x|%d %b %Y} (%{customdata[1]})<br>"
             "Normalized TTM EPS: <b>%{y:.1f}</b> (Base 100)<br>"
             "Actual TTM EPS: <b>%{customdata[2]}</b> (Start: %{customdata[3]})<br>"
@@ -1491,7 +1642,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
         )
     ))
 
-    # Trace 2: Secondary Security (if dual)
+    # Trace 2: Secondary Security EPS Base (if dual)
     if has_dual:
         cdata2 = []
         for _, row in q_df2.iterrows():
@@ -1510,7 +1661,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
             name=f"[{sname2}] Normalized TTM EPS",
             customdata=np.array(cdata2),
             hovertemplate=(
-                f"<b>[%{{customdata[0]}}] {sname2}</b><br>"
+                f"<b>[%{{customdata[0]}}] {sname2} EPS Base</b><br>"
                 "Date: %{x|%d %b %Y} (%{customdata[1]})<br>"
                 "Normalized TTM EPS: <b>%{y:.1f}</b> (Base 100)<br>"
                 "Actual TTM EPS: <b>%{customdata[2]}</b> (Start: %{customdata[3]})<br>"
@@ -1518,9 +1669,64 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
             )
         ))
 
+    # Trace 3: Relative Value Stock 1 vs Benchmark
+    if rel_val1 is not None and not rel_val1.empty:
+        rv1_cdata = np.array([f"{v - 100.0:+.1f}%" for v in rel_val1.values])
+        fig.add_trace(go.Scatter(
+            x=rel_val1.index,
+            y=rel_val1.values,
+            mode='lines',
+            line=dict(color="#38BDF8", width=2.0),
+            name=f"RelVal: [{sname1}] vs Benchmark",
+            customdata=rv1_cdata,
+            hovertemplate=(
+                f"<b>RelVal: {sname1} vs {bench_name}</b><br>"
+                "Date: %{x|%d %b %Y}<br>"
+                "Relative Value: <b>%{y:.1f}</b> (Base 100)<br>"
+                "Spread vs Market: <b>%{customdata}</b><extra></extra>"
+            )
+        ))
+
+    # Trace 4: Relative Value Stock 2 vs Benchmark (if dual)
+    if has_dual and rel_val2 is not None and not rel_val2.empty:
+        rv2_cdata = np.array([f"{v - 100.0:+.1f}%" for v in rel_val2.values])
+        fig.add_trace(go.Scatter(
+            x=rel_val2.index,
+            y=rel_val2.values,
+            mode='lines',
+            line=dict(color="#A78BFA", width=2.0),
+            name=f"RelVal: [{sname2}] vs Benchmark",
+            customdata=rv2_cdata,
+            hovertemplate=(
+                f"<b>RelVal: {sname2} vs {bench_name}</b><br>"
+                "Date: %{x|%d %b %Y}<br>"
+                "Relative Value: <b>%{y:.1f}</b> (Base 100)<br>"
+                "Spread vs Market: <b>%{customdata}</b><extra></extra>"
+            )
+        ))
+
+    # Trace 5: Relative Value Stock 1 vs Stock 2 (if dual)
+    if has_dual and rel_val_pair is not None and not rel_val_pair.empty:
+        rv_pair_cdata = np.array([[f"{v - 100.0:+.1f}%", f"{v/100.0:.2f}x"] for v in rel_val_pair.values])
+        fig.add_trace(go.Scatter(
+            x=rel_val_pair.index,
+            y=rel_val_pair.values,
+            mode='lines',
+            line=dict(color="#FB7185", width=2.2, dash="solid"),
+            name=f"RelVal: [{sname1}] vs [{sname2}]",
+            customdata=rv_pair_cdata,
+            hovertemplate=(
+                f"<b>Pair RelVal: {sname1} vs {sname2}</b><br>"
+                "Date: %{x|%d %b %Y}<br>"
+                "Relative Value: <b>%{y:.1f}</b> (Base 100)<br>"
+                "Net Spread: <b>%{customdata[0]}</b><br>"
+                "Price Ratio: <b>%{customdata[1]}</b><extra></extra>"
+            )
+        ))
+
     fig.update_layout(
         autosize=True,
-        height=450,
+        height=480,
         paper_bgcolor="#0D131F",
         plot_bgcolor="#090D15",
         font=dict(color="#F8FAFC", family="Plus Jakarta Sans, sans-serif"),
@@ -1534,7 +1740,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
             bgcolor="rgba(13, 19, 31, 0.85)",
             bordercolor="rgba(255, 255, 255, 0.12)",
             borderwidth=1,
-            font=dict(size=11, family="Plus Jakarta Sans, sans-serif")
+            font=dict(size=10.5, family="Plus Jakarta Sans, sans-serif")
         ),
         xaxis=dict(
             showgrid=True,
@@ -1544,7 +1750,7 @@ def ia_go_norm_ttm_eps_chart(eps_df, ticker_symbol, sdate=None, edate=None, eps_
             tickfont=dict(color="#94A3B8", size=10, family="JetBrains Mono, monospace")
         ),
         yaxis=dict(
-            title=dict(text="Normalized TTM EPS (Base 100)", font=dict(color="#94A3B8", size=11, family="Plus Jakarta Sans, sans-serif")),
+            title=dict(text="Normalized Value & EPS Base (Base 100)", font=dict(color="#94A3B8", size=11, family="Plus Jakarta Sans, sans-serif")),
             showgrid=True,
             gridcolor="rgba(30, 41, 59, 0.7)",
             zerolinecolor="#1E293B",
@@ -2061,16 +2267,16 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
         return '<div style="padding: 2.5rem; text-align: center; color: #64748B; font-size: 0.8125rem;">No Financial Statement Data Available</div>'
 
     html = [
-        '<div class="table-responsive ia-stmt-tbl-wrap" style="max-height: 480px; overflow-y: auto; overflow-x: auto; border: 1px solid rgba(30, 41, 59, 0.7); border-radius: 8px; background: #0D131F;">',
-        '  <table class="table ia-stmt-tbl" style="margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; font-family: \'JetBrains Mono\', monospace; font-size: 0.8125rem;">',
+        '<div class="table-responsive ia-stmt-tbl-wrap" style="max-height: 480px; overflow-y: auto; overflow-x: auto; border: 1px solid rgba(30, 41, 59, 0.7); border-radius: 8px; background: #0D131F !important;">',
+        '  <table class="ia-stmt-tbl" style="margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; font-family: \'JetBrains Mono\', monospace; font-size: 0.8125rem; background: #0D131F !important;">',
         '    <thead>',
         '      <tr>',
-        '        <th class="ia-stmt-col-header" style="position: sticky; top: 0; left: 0; z-index: 20; background: #131B2B; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); width: 32%; min-width: 180px; box-shadow: 2px 0 4px rgba(0,0,0,0.3);">Key Line Item</th>'
+        '        <th class="ia-stmt-col-header" style="position: sticky; top: 0; left: 0; z-index: 20; background: #131B2B !important; color: #38BDF8 !important; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); width: 32%; min-width: 180px; box-shadow: 2px 0 4px rgba(0,0,0,0.3); -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">Key Line Item</th>'
     ]
 
     for col in df.columns:
         c_label = ia_format_stmt_col_date(col, is_quarterly=is_quarterly)
-        html.append(f'        <th class="ia-stmt-col-data" style="position: sticky; top: 0; z-index: 10; background: #131B2B; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; text-align: right; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); width: 17%; min-width: 90px;">{c_label}</th>')
+        html.append(f'        <th class="ia-stmt-col-data" style="position: sticky; top: 0; z-index: 10; background: #131B2B !important; color: #38BDF8 !important; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; text-align: right; border-bottom: 2px solid rgba(56, 189, 248, 0.4); border-right: 1px solid rgba(255, 255, 255, 0.08); width: 17%; min-width: 90px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">{c_label}</th>')
 
     html.append('      </tr>')
     html.append('    </thead>')
@@ -2080,8 +2286,8 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
         if row_name.startswith("__SECTION__"):
             sec_title = row_name.replace("__SECTION__", "")
             colspan = len(df.columns) + 1
-            html.append('      <tr style="background: rgba(56, 189, 248, 0.08);">')
-            html.append(f'        <td colspan="{colspan}" style="padding: 8px 16px; color: #38BDF8; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(56, 189, 248, 0.2);"><i class="fas fa-caret-right mr-2" style="opacity: 0.7;"></i>{sec_title}</td>')
+            html.append('      <tr style="background: #0F2238 !important;">')
+            html.append(f'        <td colspan="{colspan}" style="padding: 8px 16px; background: #0F2238 !important; color: #38BDF8 !important; font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(56, 189, 248, 0.2); -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"><i class="fas fa-caret-right mr-2" style="opacity: 0.7;"></i>{sec_title}</td>')
             html.append('      </tr>')
             continue
 
@@ -2089,9 +2295,10 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
         row_bg = 'background: rgba(14, 140, 228, 0.08);' if is_highlight else ''
         text_color = '#38BDF8' if is_highlight else '#F8FAFC'
         font_weight = 'font-weight: 700;' if is_highlight else 'font-weight: 500;'
+        cell_bg = '#111928' if is_highlight else '#0D131F'
 
         html.append(f'      <tr style="{row_bg}">')
-        html.append(f'        <td class="ia-stmt-cell-header" style="position: sticky; left: 0; z-index: 5; background: {"#111928" if is_highlight else "#0D131F"}; padding: 9px 16px; color: {text_color}; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 2px 0 4px rgba(0,0,0,0.2);">{row_name}</td>')
+        html.append(f'        <td class="ia-stmt-cell-header" style="position: sticky; left: 0; z-index: 5; background: {cell_bg} !important; padding: 9px 16px; color: {text_color} !important; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 2px 0 4px rgba(0,0,0,0.2); -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">{row_name}</td>')
 
         for col in df.columns:
             val = df.loc[row_name, col]
@@ -2099,7 +2306,7 @@ def ia_render_statement_table(df, is_quarterly=False, is_cash_flow=False):
             num_color = '#34D399' if is_highlight else '#E2E8F0'
             if str(val_str).startswith("-₹"):
                 num_color = '#F87171'
-            html.append(f'        <td class="ia-stmt-cell-data" style="padding: 9px 16px; text-align: right; color: {num_color}; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.06);">{val_str}</td>')
+            html.append(f'        <td class="ia-stmt-cell-data" style="padding: 9px 16px; text-align: right; background: {cell_bg} !important; color: {num_color} !important; {font_weight} border-bottom: 1px solid rgba(255, 255, 255, 0.06); border-right: 1px solid rgba(255, 255, 255, 0.06); -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">{val_str}</td>')
 
         html.append('      </tr>')
 
@@ -2577,6 +2784,21 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     target_median = info.get("targetMedianPrice")
     target_mean = info.get("targetMeanPrice")
 
+    # If live Yahoo consensus data is found, persist it to disk cache
+    if forward_eps is not None or target_mean is not None:
+        _save_consensus_cache(ticker_symbol, {
+            'ticker': ticker_symbol,
+            'sname': sname,
+            'target_low': float(target_low) if target_low else None,
+            'target_median': float(target_median) if target_median else None,
+            'target_mean': float(target_mean) if target_mean else None,
+            'target_high': float(target_high) if target_high else None,
+            'forward_eps': float(forward_eps) if forward_eps else None,
+            'forward_pe': float(forward_pe) if forward_pe else None,
+            'trailing_pe': float(trailing_pe) if trailing_pe else None,
+            'is_consensus': True
+        })
+
     # Direct Yahoo quoteSummary fallback with cookie + crumb negotiation if consensus fields are missing
     if all(x is None for x in [forward_eps, forward_pe, target_mean, target_low]):
         try:
@@ -2651,17 +2873,120 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
         except Exception:
             pass
 
-    # Fallback for trailing_pe if None
+    # Tier 1 Fallback: Persistent consensus cache (for tickers on Render Free Tier)
+    cached_consensus = _load_consensus_cache(ticker_symbol)
+    if not cached_consensus:
+        raw_sym = str(ticker_symbol).replace(".NS", "").replace(".BO", "")
+        for k in [f"{raw_sym}.NS", f"{raw_sym}.BO", raw_sym]:
+            cached_consensus = _load_consensus_cache(k)
+            if cached_consensus:
+                break
+
+    if cached_consensus:
+        if forward_eps is None:
+            forward_eps = cached_consensus.get("forward_eps")
+        if forward_pe is None:
+            forward_pe = cached_consensus.get("forward_pe")
+        if trailing_pe is None:
+            trailing_pe = cached_consensus.get("trailing_pe")
+        if target_low is None:
+            target_low = cached_consensus.get("target_low")
+        if target_median is None:
+            target_median = cached_consensus.get("target_median")
+        if target_mean is None:
+            target_mean = cached_consensus.get("target_mean")
+        if target_high is None:
+            target_high = cached_consensus.get("target_high")
+
+    # Tier 2 Fallback: Fundamental Valuation Multiples from BSE Quarterly Earnings
+    is_fundamental_projection = False
+    sec_data = _LAST_SECURITY_DATA.get(ticker_symbol, {})
+    if not sec_data:
+        raw_sym = str(ticker_symbol).replace(".NS", "").replace(".BO", "")
+        for k, v in _LAST_SECURITY_DATA.items():
+            if str(k).replace(".NS", "").replace(".BO", "") == raw_sym:
+                sec_data = v
+                break
+
+    if current_price is None and sec_data.get('last_price'):
+        current_price = sec_data.get('last_price')
+
+    ttm_eps_series = sec_data.get('ttm_eps')
+    pe_data_dict = sec_data.get('pe_data')
+    eps_df = sec_data.get('eps_df')
+
+    latest_ttm_eps = None
+    if ttm_eps_series is not None and hasattr(ttm_eps_series, 'dropna'):
+        clean_s = ttm_eps_series.dropna()
+        if not clean_s.empty:
+            latest_ttm_eps = float(clean_s.iloc[-1])
+
+    # Trailing P/E Calculation
     if trailing_pe is None:
-        trailing_eps = info.get("trailingEps")
-        if current_price and trailing_eps:
-            try:
-                cp = float(current_price)
-                te = float(trailing_eps)
-                if te > 0:
-                    trailing_pe = cp / te
-            except Exception:
-                pass
+        if current_price and latest_ttm_eps and latest_ttm_eps > 0:
+            trailing_pe = round(float(current_price) / float(latest_ttm_eps), 2)
+        else:
+            trailing_eps = info.get("trailingEps")
+            if current_price and trailing_eps:
+                try:
+                    cp = float(current_price)
+                    te = float(trailing_eps)
+                    if te > 0:
+                        trailing_pe = round(cp / te, 2)
+                except Exception:
+                    pass
+
+    # Forward EPS Calculation
+    if forward_eps is None:
+        if latest_ttm_eps and latest_ttm_eps > 0:
+            est_growth = 0.12  # Baseline 12% annual expansion
+            if eps_df is not None and not eps_df.empty:
+                for g_col in ['TTM_YoY_Growth', 'YoY_Growth', 'Growth']:
+                    if g_col in eps_df.columns:
+                        g_vals = eps_df[g_col].dropna()
+                        if len(g_vals) >= 4:
+                            med_g = float(g_vals.tail(8).median())
+                            est_growth = min(max(med_g / 100.0, -0.10), 0.25)
+                            break
+            forward_eps = round(latest_ttm_eps * (1.0 + est_growth), 2)
+            is_fundamental_projection = True
+
+    # Forward P/E Calculation
+    if forward_pe is None and current_price and forward_eps and float(forward_eps) > 0:
+        forward_pe = round(float(current_price) / float(forward_eps), 2)
+
+    # Target Prices Calculation from Historical P/E Multiples
+    if any(x is None for x in [target_low, target_median, target_mean, target_high]):
+        med_pe = None
+        low_pe = None
+        high_pe = None
+        if pe_data_dict:
+            med_pe = pe_data_dict.get('median_pe')
+            low_pe = pe_data_dict.get('lower_pe')
+            high_pe = pe_data_dict.get('upper_pe')
+        
+        if not med_pe and trailing_pe:
+            med_pe = float(trailing_pe)
+            low_pe = med_pe * 0.85
+            high_pe = med_pe * 1.25
+
+        if med_pe and forward_eps and float(forward_eps) > 0:
+            f_eps = float(forward_eps)
+            if not low_pe:
+                low_pe = med_pe * 0.85
+            if not high_pe:
+                high_pe = med_pe * 1.25
+
+            calc_median = round(f_eps * med_pe, 2)
+            calc_low = round(f_eps * low_pe, 2)
+            calc_high = round(f_eps * high_pe, 2)
+            calc_mean = round((calc_low + calc_median + calc_high) / 3.0, 2)
+
+            if target_low is None: target_low = calc_low
+            if target_median is None: target_median = calc_median
+            if target_high is None: target_high = calc_high
+            if target_mean is None: target_mean = calc_mean
+            is_fundamental_projection = True
 
     # If all items are None, don't show an empty card
     if all(x is None for x in [market_cap, forward_eps, forward_pe, trailing_pe, target_low, target_high, target_median, target_mean]):
@@ -2734,6 +3059,14 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     if upside_badge:
         cur_price_sub += f" &bull; {upside_badge}"
 
+    badge_label = "Fundamental Projections" if is_fundamental_projection else "Consensus Projections"
+    fwd_eps_sub = "Fundamental 12M Forward EPS" if is_fundamental_projection else "Consensus 12M Forward EPS"
+    fwd_pe_sub = "Price / Projected 1-Yr EPS" if is_fundamental_projection else "Price / 1-Yr Forward EPS"
+    target_header = "Fundamental Target Price Distribution (12-Month Horizon)" if is_fundamental_projection else "Analyst Target Price Distribution (12-Month Horizon)"
+    target_median_sub = "Median Multiple" if is_fundamental_projection else "Median Target"
+    target_mean_sub = "Multiple Average" if is_fundamental_projection else "Consensus Average"
+    target_high_sub = "Bullish Multiple" if is_fundamental_projection else "Bullish Ceiling"
+
     html = f'''
     <div class="card" style="background: #0D131F; border: 1px solid rgba(30, 41, 59, 0.8); border-radius: 12px; margin-top: 0px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35); overflow: hidden;">
       <div class="card-header" style="background: #111928; border-bottom: 1px solid rgba(30, 41, 59, 0.8); padding: 12px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
@@ -2743,7 +3076,7 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
             Security Profile & Market Expectations ({sname})
           </h4>
           <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 2px 7px; border-radius: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
-            Consensus Projections
+            {badge_label}
           </span>
         </div>
         <div style="font-size: 0.75rem; color: #94A3B8; font-family: 'JetBrains Mono', monospace;">
@@ -2781,7 +3114,7 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
                 {fwd_eps_str}
               </div>
               <div style="font-size: 0.68rem; color: #64748B; margin-top: 3px;">
-                Consensus 12M Forward EPS
+                {fwd_eps_sub}
               </div>
             </div>
           </div>
@@ -2797,7 +3130,7 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
                 {fwd_pe_str}
               </div>
               <div style="font-size: 0.68rem; color: #64748B; margin-top: 3px;">
-                Price / 1-Yr Forward EPS
+                {fwd_pe_sub}
               </div>
             </div>
           </div>
@@ -2822,7 +3155,7 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
         <!-- 4. Analyst Target Prices Corridor Breakdown -->
         <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
           <div style="font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 8px;">
-            <i class="fas fa-arrows-alt-h mr-1" style="color: #38BDF8;"></i> Analyst Target Price Distribution (12-Month Horizon)
+            <i class="fas fa-arrows-alt-h mr-1" style="color: #38BDF8;"></i> {target_header}
           </div>
           <div style="display: flex; flex-wrap: wrap; gap: 10px;">
             <!-- Low -->
@@ -2835,19 +3168,19 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
             <div style="flex: 1; min-width: 140px; background: #090D15; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #38BDF8;">
               <div style="font-size: 0.68rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Target Median</div>
               <div style="font-size: 0.95rem; font-weight: 700; color: #38BDF8; font-family: 'JetBrains Mono', monospace; margin: 2px 0;">{t_median_str}</div>
-              <div style="font-size: 0.68rem; color: #64748B;">Median Target</div>
+              <div style="font-size: 0.68rem; color: #64748B;">{target_median_sub}</div>
             </div>
             <!-- Mean -->
             <div style="flex: 1; min-width: 140px; background: #090D15; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #FACC15;">
               <div style="font-size: 0.68rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Target Mean</div>
               <div style="font-size: 0.95rem; font-weight: 700; color: #FACC15; font-family: 'JetBrains Mono', monospace; margin: 2px 0;">{t_mean_str}</div>
-              <div style="font-size: 0.68rem; color: #64748B;">Consensus Average</div>
+              <div style="font-size: 0.68rem; color: #64748B;">{target_mean_sub}</div>
             </div>
             <!-- High -->
             <div style="flex: 1; min-width: 140px; background: #090D15; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #34D399;">
               <div style="font-size: 0.68rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Target High</div>
               <div style="font-size: 0.95rem; font-weight: 700; color: #34D399; font-family: 'JetBrains Mono', monospace; margin: 2px 0;">{t_high_str}</div>
-              <div style="font-size: 0.68rem; color: #64748B;">Bullish Ceiling</div>
+              <div style="font-size: 0.68rem; color: #64748B;">{target_high_sub}</div>
             </div>
           </div>
         </div>
