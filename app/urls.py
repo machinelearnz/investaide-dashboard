@@ -11,6 +11,7 @@ urlpatterns = [
     # The home page
     path('', views.index, name='home'),
     path('api/ticker-search/', views.ticker_search, name='ticker_search'),
+    path('api/ai-analysis-json/', views.export_ai_analysis_json, name='ai_analysis_json'),
     path('coffee-can.html', views.ccan, name='coffee'),
     path('co_fins.html', views.cofin, name='cofin'),
 

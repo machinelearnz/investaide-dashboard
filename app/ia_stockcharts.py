@@ -34,6 +34,10 @@ else:
 
 # Module-level session cache to store computed earnings, trailing EPS, YoY growth, and valuation multiples
 _LAST_SECURITY_DATA = {}
+_LAST_SECURITY_EXPECTATIONS = {}
+_LAST_SECURITY_STATEMENTS = {}
+_LAST_REPORT_DATA = {}
+_LAST_VOLUME_DF = pd.DataFrame()
 
 def _load_consensus_cache(ticker):
     try:
@@ -352,7 +356,51 @@ def ia_plot_prices(stock_list, sdate, edate, y_scale, cycle_type="bull_bear"):
         align_note = ""
     msg = f"Analysis conducted from : {cur_s.strftime('%d-%m-%Y')} to {pd.to_datetime(act_edate).strftime('%d-%m-%Y')}{align_note}"
 
+    # ---------------------------------------------------------
+    # Relative Volatility & Volume Shock Detection
+    # ---------------------------------------------------------
+    global _LAST_VOLUME_DF
+    volume_df = _LAST_VOLUME_DF.reindex(prices_df.index).copy() if not _LAST_VOLUME_DF.empty else pd.DataFrame()
+    from . import ia_volatility
+    ben_sym = stock_list[0] if stock_list else "^NSEI"
+    vol_analysis = ia_volatility.build_relative_volatility_analysis(
+        prices_df=prices_df,
+        volume_df=volume_df,
+        benchmark=ben_sym,
+        primary_ticker=stk_ticker,
+        secondary_ticker=stk_ticker2,
+        primary_name=short_name(stk_ticker) if stk_ticker else None,
+        secondary_name=short_name(stk_ticker2) if stk_ticker2 else None,
+        benchmark_name=short_name(ben_sym)
+    )
+    plot_div_vol_shock = ia_volatility.build_volatility_shocks_plotly_chart(vol_analysis)
+
+    global _LAST_REPORT_DATA
+    _LAST_REPORT_DATA = {
+        'benchmark': stock_list[0] if stock_list else None,
+        'stk_ticker': stk_ticker,
+        'stk_ticker2': stk_ticker2,
+        'prices_df': prices_df,
+        'volume_df': volume_df,
+        'vol_analysis': vol_analysis,
+        'plot_div_vol_shock': plot_div_vol_shock,
+        'norm_prices_df': norm_prices_df,
+        'risk_metric_df': risk_metric_df,
+        'cycles': cycles,
+        'cycle_type': cycle_type,
+        'act_sdate': act_sdate,
+        'act_edate': act_edate,
+        'eps_df': eps_df,
+        'eps_df2': eps_df2,
+        'pe_data': pe_data,
+        'pe_data2': pe_data2,
+    }
+
     return (pdiv4, pdiv5, tbl_div_eps, plot_div_eps_growth, plot_div_ttm_eps, pdiv3, pdiv2, pdiv1, msg, pdiv2_sec, plot_div_ttm_eps2, tbl_div_eps2, plot_div_norm_eps)
+
+def ia_go_volatility_shocks_chart():
+    """Returns the cached Plotly HTML div for Relative Volatility & Volume Shock Detection."""
+    return _LAST_REPORT_DATA.get('plot_div_vol_shock', '')
 
 def ia_get_financials(comp, exch, sdate, edate):
     cname = ia_sinfo.stock_name_code_map.get(comp, [None, None, comp])[2]
@@ -753,6 +801,7 @@ def ia_get_prices(stock_list, sdate, edate):
     alias_map = {"NIFTY50": "^NSEI", "SENSEX": "^BSESN", "NIFTY 50": "^NSEI"}
     ticker_list = [alias_map.get(t, t) for t in stock_list if t and str(t).upper() != "NA"]
     stk_price_df = pd.DataFrame()
+    stk_volume_df = pd.DataFrame()
 
     missing_stocks = {}
     req_sdate = pd.to_datetime(sdate).tz_localize(None).normalize() if sdate else None
@@ -764,18 +813,33 @@ def ia_get_prices(stock_list, sdate, edate):
         if not ticker or str(ticker).upper() == "NA":
             continue
         temp_data = None
+        temp_vol = None
         # Try yfinance first
         try:
             downloaded = yf.download(ticker, start=sdate, end=edate, progress=False)
             if downloaded is not None and not downloaded.empty:
-                if 'Adj Close' in downloaded.columns:
-                    temp_data = downloaded['Adj Close']
-                elif 'Close' in downloaded.columns:
-                    temp_data = downloaded['Close']
+                if isinstance(downloaded.columns, pd.MultiIndex):
+                    lvl0 = downloaded.columns.get_level_values(0)
+                    if 'Adj Close' in lvl0:
+                        temp_data = downloaded.xs('Adj Close', axis=1, level=0)
+                    elif 'Close' in lvl0:
+                        temp_data = downloaded.xs('Close', axis=1, level=0)
+                    if 'Volume' in lvl0:
+                        temp_vol = downloaded.xs('Volume', axis=1, level=0)
+                else:
+                    if 'Adj Close' in downloaded.columns:
+                        temp_data = downloaded['Adj Close']
+                    elif 'Close' in downloaded.columns:
+                        temp_data = downloaded['Close']
+                    if 'Volume' in downloaded.columns:
+                        temp_vol = downloaded['Volume']
                 if isinstance(temp_data, pd.DataFrame):
                     temp_data = temp_data.iloc[:, 0]
+                if isinstance(temp_vol, pd.DataFrame):
+                    temp_vol = temp_vol.iloc[:, 0]
         except Exception:
             temp_data = None
+            temp_vol = None
 
         # Fallback to Ticker history
         if temp_data is None or temp_data.empty:
@@ -783,29 +847,58 @@ def ia_get_prices(stock_list, sdate, edate):
                 t = yf.Ticker(ticker)
                 hist = t.history(start=sdate, end=edate)
                 if hist is not None and not hist.empty:
-                    if 'Adj Close' in hist.columns:
-                        temp_data = hist['Adj Close']
-                    elif 'Close' in hist.columns:
-                        temp_data = hist['Close']
+                    if isinstance(hist.columns, pd.MultiIndex):
+                        lvl0 = hist.columns.get_level_values(0)
+                        if 'Adj Close' in lvl0:
+                            temp_data = hist.xs('Adj Close', axis=1, level=0)
+                        elif 'Close' in lvl0:
+                            temp_data = hist.xs('Close', axis=1, level=0)
+                        if 'Volume' in lvl0:
+                            temp_vol = hist.xs('Volume', axis=1, level=0)
+                    else:
+                        if 'Adj Close' in hist.columns:
+                            temp_data = hist['Adj Close']
+                        elif 'Close' in hist.columns:
+                            temp_data = hist['Close']
+                        if 'Volume' in hist.columns:
+                            temp_vol = hist['Volume']
                     if isinstance(temp_data, pd.DataFrame):
                         temp_data = temp_data.iloc[:, 0]
+                    if isinstance(temp_vol, pd.DataFrame):
+                        temp_vol = temp_vol.iloc[:, 0]
             except Exception:
                 temp_data = None
+                temp_vol = None
 
         # Fallback to pandas_datareader DataReader
         if temp_data is None or temp_data.empty:
             try:
-                temp_data = wb.DataReader(ticker, data_source="yahoo", start=sdate, end=edate)['Adj Close']
+                reader_df = wb.DataReader(ticker, data_source="yahoo", start=sdate, end=edate)
+                if 'Adj Close' in reader_df.columns:
+                    temp_data = reader_df['Adj Close']
+                elif 'Close' in reader_df.columns:
+                    temp_data = reader_df['Close']
+                if 'Volume' in reader_df.columns:
+                    temp_vol = reader_df['Volume']
                 if isinstance(temp_data, pd.DataFrame):
                     temp_data = temp_data.iloc[:, 0]
+                if isinstance(temp_vol, pd.DataFrame):
+                    temp_vol = temp_vol.iloc[:, 0]
             except Exception:
                 temp_data = None
+                temp_vol = None
 
         if temp_data is not None and not temp_data.empty and len(temp_data) > 0:
             if hasattr(temp_data.index, 'tz') and temp_data.index.tz is not None:
                 temp_data.index = temp_data.index.tz_localize(None)
             temp_data.index = pd.to_datetime(temp_data.index).normalize()
             stk_price_df[ticker] = temp_data
+
+            if temp_vol is not None and not temp_vol.empty and len(temp_vol) > 0:
+                if hasattr(temp_vol.index, 'tz') and temp_vol.index.tz is not None:
+                    temp_vol.index = temp_vol.index.tz_localize(None)
+                temp_vol.index = pd.to_datetime(temp_vol.index).normalize()
+                stk_volume_df[ticker] = temp_vol
 
             try:
                 t_first = temp_data.index[0]
@@ -838,6 +931,11 @@ def ia_get_prices(stock_list, sdate, edate):
         min_sdate = common_start
         max_edate = common_end
         stk_price_df = stk_price_df.loc[min_sdate:max_edate].dropna(subset=valid_cols)
+        if not stk_volume_df.empty:
+            stk_volume_df = stk_volume_df.reindex(stk_price_df.index)
+
+    global _LAST_VOLUME_DF
+    _LAST_VOLUME_DF = stk_volume_df.copy()
 
     return stk_price_df, min_sdate, missing_stocks, max_edate
 
@@ -2504,6 +2602,20 @@ def ia_get_company_financials_widget(ticker_symbol, sname=None):
         raw_bs_qtr = _get_stmt(t, 'quarterly_balance_sheet')
         raw_cf_ann = _get_stmt(t, 'cash_flow', 'cashflow')
         raw_cf_qtr = _get_stmt(t, 'quarterly_cash_flow')
+
+        fin_curr = None
+        try:
+            fin_curr = t.info.get("financialCurrency") if hasattr(t, "info") and t.info else None
+        except Exception:
+            pass
+
+        global _LAST_SECURITY_STATEMENTS
+        _LAST_SECURITY_STATEMENTS[ticker_symbol] = {
+            'raw_inc_ann': raw_inc_ann,
+            'raw_bs_ann': raw_bs_ann,
+            'raw_cf_ann': raw_cf_ann,
+            'financial_currency': fin_curr,
+        }
     except Exception as e:
         print(f"Error fetching statements for {ticker_symbol}: {e}")
         return ""
@@ -3067,6 +3179,20 @@ def ia_get_security_expectations_widget(ticker_symbol, sname=None):
     target_mean_sub = "Multiple Average" if is_fundamental_projection else "Consensus Average"
     target_high_sub = "Bullish Multiple" if is_fundamental_projection else "Bullish Ceiling"
 
+    global _LAST_SECURITY_EXPECTATIONS
+    _LAST_SECURITY_EXPECTATIONS[ticker_symbol] = {
+        'cmp': current_price,
+        'market_cap': market_cap,
+        'forward_eps': forward_eps,
+        'forward_pe': forward_pe,
+        'trailing_pe': trailing_pe,
+        'target_low': target_low,
+        'target_median': target_median,
+        'target_mean': target_mean,
+        'target_high': target_high,
+        'upside_pct': upside_pct if 'upside_pct' in locals() else None,
+    }
+
     html = f'''
     <div class="card" style="background: #0D131F; border: 1px solid rgba(30, 41, 59, 0.8); border-radius: 12px; margin-top: 0px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35); overflow: hidden;">
       <div class="card-header" style="background: #111928; border-bottom: 1px solid rgba(30, 41, 59, 0.8); padding: 12px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
@@ -3235,15 +3361,23 @@ def get_beta_port(port_df):
 def short_name(long_name):
     if long_name == "index" or long_name == "port":
         return long_name
+    sym_clean = str(long_name).replace(".NS", "").replace(".BO", "").strip().upper()
+    if sym_clean == "TCS":
+        return "TATA CONSULTANCY"
     try:
-        coname = str(ia_sinfo.stock_name_code_map[long_name][2]).split()
-        if len(coname) > 1:
-            coname = coname[0] + " " + coname[1]
+        raw_coname = str(ia_sinfo.stock_name_code_map[long_name][2]).strip()
+        coname_words = raw_coname.split()
+        if len(coname_words) > 1:
+            coname = coname_words[0] + " " + coname_words[1]
         else:
-            coname = coname[0]
-        return coname[0:min(len(coname), 15)]
+            coname = coname_words[0]
+        coname = coname.rstrip(",. ")
+        # Avoid chopping words mid-way (e.g. "TATA CONSULTANCY" was cut to 15 chars "TATA CONSULTANC")
+        if len(coname) <= 22:
+            return coname
+        return coname[:22]
     except Exception:
-        return str(long_name)[0:15]
+        return str(long_name).replace(".NS", "").replace(".BO", "")[:22]
 
 
 def change_headers(port_df):

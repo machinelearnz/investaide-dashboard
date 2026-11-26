@@ -429,7 +429,11 @@
           Unsupervised quantitative modeling to evaluate cointegration, historical beta sensitivity, and mean-reverting price spreads across Indian equities.
         </p>
       </div>
-      <div class="d-flex align-items-center mt-2 mt-md-0">
+      <div class="d-flex align-items-center mt-2 mt-md-0" style="gap: 0.625rem;">
+        <button type="button" id="btn-export-ai-json" onclick="iaExportAIAnalysisJSON()" class="btn btn-sm" style="background: linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(139, 92, 246, 0.28)); border: 1px solid #A78BFA; color: #C4B5FD; font-weight: 700; font-size: 0.8125rem; padding: 0.5rem 1.1rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);" onmouseover="this.style.background='rgba(167, 139, 246, 0.35)'; this.style.color='#FFFFFF'; this.style.boxShadow='0 0 14px rgba(167, 139, 250, 0.4)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(139, 92, 246, 0.28))'; this.style.color='#C4B5FD'; this.style.boxShadow='0 2px 8px rgba(139, 92, 246, 0.15)'">
+          <i class="fas fa-brain" style="font-size: 0.95rem; color: #A78BFA;"></i>
+          <span>AI Analysis (JSON)</span>
+        </button>
         <button type="button" id="btn-download-pdf" onclick="iaExportAnalysisPDF()" class="btn btn-sm" style="background: linear-gradient(135deg, rgba(14, 140, 228, 0.18), rgba(2, 132, 199, 0.28)); border: 1px solid #38A9F6; color: #38A9F6; font-weight: 700; font-size: 0.8125rem; padding: 0.5rem 1.1rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(14, 140, 228, 0.15);" onmouseover="this.style.background='rgba(56, 169, 246, 0.3)'; this.style.boxShadow='0 0 14px rgba(56, 169, 246, 0.4)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(14, 140, 228, 0.18), rgba(2, 132, 199, 0.28))'; this.style.boxShadow='0 2px 8px rgba(14, 140, 228, 0.15)'">
           <i class="fas fa-file-pdf" style="font-size: 0.95rem;"></i>
           <span>Download PDF</span>
@@ -668,6 +672,23 @@
   </div>
   {% endif %}
 
+  {% if plot_div_vol_shock %}
+  <div class="col-lg-12">
+    <div class="card" style="page-break-inside: avoid; break-inside: avoid;">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 style="font-size: 0.9375rem; font-weight: 700; color: #F8FAFC; margin-bottom: 0;">
+          Relative Volatility &amp; Idiosyncratic Shocks
+        </h4>
+      </div>
+      <div class="card-body p-0">
+        {% autoescape off %}
+        {{ plot_div_vol_shock }}
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if plot_div_eps_growth %}
   <div class="col-lg-12">
     <div class="card">
@@ -888,6 +909,19 @@
 </div>
 <!-- /#ia-analysis-window -->
 
+<!-- Embedded AI Analysis JSON Payload -->
+{% if ai_context_json %}
+<script id="investaide-ai-context-data" type="application/json">
+{{ ai_context_json|safe }}
+</script>
+{% endif %}
+
+<!-- Toast Notification for AI JSON Export -->
+<div id="ia-toast" style="position: fixed; bottom: 28px; right: 28px; z-index: 99999; background: #0D131F; border: 1px solid rgba(52, 211, 153, 0.5); border-left: 4px solid #34D399; border-radius: 8px; padding: 12px 18px; color: #F8FAFC; box-shadow: 0 10px 25px rgba(0,0,0,0.6); display: none; align-items: center; gap: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.84rem; transform: translateY(20px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+  <i class="fas fa-check-circle" style="color: #34D399; font-size: 1.1rem;"></i>
+  <span id="ia-toast-message">AI Analysis JSON downloaded</span>
+</div>
+
 {% endblock content %}
 
 {% block javascripts %}
@@ -1041,6 +1075,97 @@ function iaToggleCagrLine(labelPrefix, cardEl) {
     cardEl.style.opacity = '0.35';
     cardEl.style.filter = 'grayscale(80%)';
   }
+}
+
+// --- Toast Notification Handler ---
+function iaShowToast(msg, type = 'success') {
+  const toast = document.getElementById('ia-toast');
+  const msgEl = document.getElementById('ia-toast-message');
+  if (!toast || !msgEl) return;
+  msgEl.textContent = msg;
+  const icon = toast.querySelector('i');
+  if (type === 'warning') {
+    toast.style.borderColor = 'rgba(250, 204, 21, 0.5)';
+    toast.style.borderLeftColor = '#FACC15';
+    if (icon) {
+      icon.className = 'fas fa-exclamation-triangle';
+      icon.style.color = '#FACC15';
+    }
+  } else {
+    toast.style.borderColor = 'rgba(52, 211, 153, 0.5)';
+    toast.style.borderLeftColor = '#34D399';
+    if (icon) {
+      icon.className = 'fas fa-check-circle';
+      icon.style.color = '#34D399';
+    }
+  }
+  toast.style.display = 'flex';
+  setTimeout(function() {
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+  }, 10);
+  setTimeout(function() {
+    toast.style.transform = 'translateY(20px)';
+    toast.style.opacity = '0';
+    setTimeout(function() { toast.style.display = 'none'; }, 300);
+  }, 3200);
+}
+
+// --- AI Analysis JSON Exporter (schema_version: "1.0") ---
+function iaExportAIAnalysisJSON() {
+  const dataEl = document.getElementById('investaide-ai-context-data');
+  if (!dataEl || !dataEl.textContent.trim()) {
+    // If no embedded data yet, attempt live fetch from API endpoint
+    fetch('/api/ai-analysis-json/')
+      .then(function(res) {
+        if (!res.ok) throw new Error('No Relative Value analysis available');
+        return res.json();
+      })
+      .then(function(data) {
+        iaDownloadJSONFile(data);
+      })
+      .catch(function(err) {
+        iaShowToast('⚠️ Please run a Relative Value analysis first.', 'warning');
+      });
+    return;
+  }
+
+  try {
+    const jsonText = dataEl.textContent.trim();
+    const data = JSON.parse(jsonText);
+    iaDownloadJSONFile(data);
+  } catch (e) {
+    console.error("Failed to parse AI context JSON:", e);
+    iaShowToast('Error exporting JSON: ' + e.message, 'warning');
+  }
+}
+
+function iaDownloadJSONFile(data) {
+  const primTicker = (data.metadata && data.metadata.primary_security && data.metadata.primary_security.ticker)
+    ? data.metadata.primary_security.ticker.replace(/[\^]/g, '')
+    : 'PRIMARY';
+  const secTicker = (data.metadata && data.metadata.secondary_security && data.metadata.secondary_security.ticker && data.metadata.secondary_security.ticker !== 'NA')
+    ? data.metadata.secondary_security.ticker.replace(/[\^]/g, '')
+    : null;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isSolo = (data.metadata && data.metadata.analysis_mode === 'solo') || !secTicker;
+
+  const fileName = !isSolo
+    ? `InvestAide_AI_Context_${primTicker}_${secTicker}_${todayStr}.json`
+    : `InvestAide_AI_Context_${primTicker}_SOLO_${todayStr}.json`;
+
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', fileName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  iaShowToast('AI Analysis JSON downloaded', 'success');
 }
 
 // --- Executive Publication PDF Exporter (Native Vector PDF & A4 Landscape) ---

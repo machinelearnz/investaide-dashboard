@@ -11,6 +11,8 @@ from django import template
 from .forms import ceform_scale, coffee_can_form, co_financials_form
 from . import ia_stockcharts
 from . import ia_stock_index_info as ia_sinfo
+from . import ia_ai_export
+import json
 import pandas as pd
 import os
 import gc
@@ -130,6 +132,7 @@ def index(request):
     plot_div_norm = ""
     plot_div_stock = ""
     plot_div_ben = ""
+    plot_div_vol_shock = ""
 
     # Secondary security variables
     plot_div_stock2 = ""
@@ -140,6 +143,7 @@ def index(request):
     plot_div_financial_trends2 = ""
     si2_name = ""
     has_secondary = False
+    ai_context_json = ""
 
     form = ceform_scale(request.POST or None)
     message = "Please Enter field details"
@@ -235,6 +239,26 @@ def index(request):
             tbl_div_financials2 = ia_stockcharts.ia_get_company_financials_widget(si2, sname=si2_name)
             tbl_div_expectations2 = ia_stockcharts.ia_get_security_expectations_widget(si2, sname=si2_name)
 
+        # Relative Volatility & Volume Shock Widget
+        plot_div_vol_shock = ia_stockcharts.ia_go_volatility_shocks_chart()
+
+        # Build compact, structured AI Analysis Context (Zero extra data fetches)
+        try:
+            ai_context_dict = ia_ai_export.build_ai_analysis_payload(
+                benchmark=ben,
+                primary_ticker=si,
+                primary_name=si_name,
+                secondary_ticker=si2 if has_secondary else None,
+                secondary_name=si2_name if has_secondary else None,
+                sdate=sdate,
+                edate=edate,
+                cycle_type=cycle_type
+            )
+            ai_context_json = json.dumps(ai_context_dict, indent=2)
+        except Exception as e:
+            print(f"Warning: Failed to generate AI analysis payload: {e}")
+            ai_context_json = ""
+
     else:
         print("%%%%", "Here3")
         print("invalid")
@@ -266,6 +290,8 @@ def index(request):
         'tbl_div_financials2': tbl_div_financials2,
         'tbl_div_expectations2': tbl_div_expectations2,
         'plot_div_financial_trends2': plot_div_financial_trends2,
+        'plot_div_vol_shock': plot_div_vol_shock,
+        'ai_context_json': ai_context_json,
     }
     context['segment'] = 'index'
     print("%%%%", "Here4")
@@ -384,3 +410,35 @@ def pages(request):
     
         html_template = loader.get_template( 'page-500.html' )
         return HttpResponse(html_template.render(context, request))
+
+
+def export_ai_analysis_json(request):
+    """
+    Dedicated JSON export API endpoint for AI context analysis.
+    Returns the pre-computed payload without making any duplicate data fetches.
+    """
+    rep_data = getattr(ia_stockcharts, '_LAST_REPORT_DATA', {})
+    if not rep_data or not rep_data.get('stk_ticker'):
+        return JsonResponse({"error": "No Relative Value analysis has been conducted yet."}, status=404)
+
+    ben = rep_data.get('benchmark', '^NSEI')
+    si = rep_data.get('stk_ticker')
+    si_name = ia_sinfo.stock_name_code_map.get(si, [None, None, si])[2]
+    si2 = rep_data.get('stk_ticker2')
+    si2_name = ia_sinfo.stock_name_code_map.get(si2, [None, None, si2])[2] if si2 else None
+    sdate = rep_data.get('act_sdate')
+    edate = rep_data.get('act_edate')
+    cycle_type = rep_data.get('cycle_type', 'bull_bear')
+
+    payload = ia_ai_export.build_ai_analysis_payload(
+        benchmark=ben,
+        primary_ticker=si,
+        primary_name=si_name,
+        secondary_ticker=si2,
+        secondary_name=si2_name,
+        sdate=sdate,
+        edate=edate,
+        cycle_type=cycle_type
+    )
+    return JsonResponse(payload, json_dumps_params={'indent': 2})
+
